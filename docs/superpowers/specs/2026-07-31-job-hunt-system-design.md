@@ -113,7 +113,7 @@ Each source carries its own interval in `targets.yaml`; the 10-minute tick is a 
 
 ## 5. Data model
 
-PostgreSQL 16 (Neon). Timestamps are `TIMESTAMPTZ` throughout — a distributed system with UTC cron and Pacific-local business rules cannot afford naive strings.
+PostgreSQL (Neon provisions **18.4** as of 2026-08-01; the local dev cluster is 16 and CI should be pinned to 18 to match). Nothing in the schema is version-specific — verified by applying both migrations to Neon. Timestamps are `TIMESTAMPTZ` throughout — a distributed system with UTC cron and Pacific-local business rules cannot afford naive strings.
 
 ```sql
 -- Employers. Sharia verdict is cached here forever.
@@ -433,8 +433,8 @@ Two long-lived environments, mapped to branches:
 
 | Environment | Branch | Vercel target | Neon branch | Cron |
 |---|---|---|---|---|
-| Production | `main` | Production | `main` | Active |
-| Staging | `staging` | Preview (aliased) | `staging` (forked from `main`) | Inactive — trigger manually |
+| Production | `main` | Production | `production` (Neon's default) | Active |
+| Staging | `staging` | Preview (aliased) | `staging` (forked from `production`) | Inactive — trigger manually |
 
 Neon's branching is what makes staging honest: `staging` forks from production data copy-on-write, so the UI is exercised against realistically-shaped rows instead of an empty database. Refork it whenever it drifts; it costs nothing.
 
@@ -446,15 +446,36 @@ Vercel's native Git integration is **disabled**; deploys go through Actions so t
 
 | Workflow | Trigger | Steps |
 |---|---|---|
-| `ci.yml` | every PR and push | ruff, mypy, pytest against a Postgres service container |
-| `deploy-staging.yml` | push to `staging` | ci → `vercel pull --environment=preview` → migrate Neon `staging` → `vercel build` → `vercel deploy --prebuilt` → alias |
-| `deploy-production.yml` | push to `main` | ci → `vercel pull --environment=production` → migrate Neon `main` → `vercel build` → `vercel deploy --prebuilt --prod` |
+| `ci.yml` | PR, push to `main`/`staging`, and `workflow_call` | ruff check + format, pytest against a `postgres:18` service container |
+| `deploy-staging.yml` | push to `staging` | ci → `vercel pull --environment=preview` → migrate Neon `staging` → `vercel build` → `vercel deploy --prebuilt` |
+| `deploy-production.yml` | push to `main` | ci → `vercel pull --environment=production` → migrate Neon `production` → `vercel build --prod` → `vercel deploy --prebuilt --prod` → smoke test |
+
+`ci.yml` is a reusable workflow (`workflow_call`) that both deploy workflows
+invoke as a job, so tests gate every deployment without the steps existing in
+three places. Both deploys carry a `concurrency` group: two overlapping runs
+would otherwise migrate the same Neon branch simultaneously.
+
+**The CI service container is `postgres:18`, not 16.** Neon provisions 18; the
+local dev cluster is 16. CI matching production is what would surface a
+version-specific regression, and the local skew is acceptable because nothing in
+the schema is version-dependent.
+
+**`vercel build` requires `uv` on the runner.** Vercel's Python builder shells
+out to it. It is present on Vercel's own build machines and absent on GitHub
+runners, and the failure — *"uv is required but was not found in PATH"* —
+appears only at build time, after the tests have already passed. Both deploy
+workflows install it with `astral-sh/setup-uv`.
+
+**No `.vercelignore`.** It breaks `vercel deploy --prebuilt` with an `ENOENT`
+naming a file that exists, because it excludes from the upload files the build
+manifest still references. `excludeFiles` under `functions` in `vercel.json`
+does the equivalent job without interfering.
 
 Migrations run **before** the deploy is promoted and must be backward-compatible with the currently-live code, because there is a window where old code is serving against the new schema. In practice: add columns nullable, never rename or drop in the same deploy that stops using them.
 
 ### 13.3 Function configuration
 
-- `maxDuration: 800` on the entrypoint (Pro maximum, generally available). The queue-drain design means we should never approach it; `run_log.duration_ms` tells us whether that holds.
+- `maxDuration: 300` on the entrypoint — **currently on Hobby, which caps there**. Pro allows 800. `pipeline.config.INVOCATION_CEILING_SECONDS` mirrors this value and `DEFAULT_RUN_BUDGET_SECONDS` sits at 80% of it; a test asserts the mirror matches `vercel.json`, because drift is silent — the code would plan for headroom it does not have. Raise both together or neither. The queue-drain design means we should rarely approach it; `run_log.duration_ms` says whether that holds.
 - `CRON_SECRET` set as a project env var. Vercel sends it as `Authorization: Bearer …` on every cron invocation; the handler compares and returns 401 otherwise. Without this, a public URL guess triggers your pipeline.
 - **Verify on first deploy:** confirm cron invocations still reach the function once Deployment Protection is scoped to "All Deployments". If they are blocked, the documented remedy is Protection Bypass for Automation (`x-vercel-protection-bypass`), which is available on Pro. Test with `vercel crons run` immediately after enabling protection — do not wait for the schedule to discover this.
 - Embeddings (Phase 2): the `bge-small-en-v1.5` ONNX model is fetched into the bundle by the build script (`[tool.vercel.scripts] build`) rather than downloaded at runtime, so cold starts do not pay for a 130 MB download. If the bundle exceeds 500 MB, set `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` for the 5 GB limit.

@@ -15,14 +15,20 @@ seed/
 
 # Vercel
 .vercel/
+# .python-version, .vercelignore, vercel.json and uv.lock ARE committed:
+# they pin the runtime and dependency graph so a Vercel build matches local.
 
-# Local Postgres cluster used by the test suite
+# Local Postgres cluster lives outside the repo now (see scripts/dev_db.sh).
+# Kept here so an older checkout does not resurrect it.
 .pgdata/
 
 # Python
 venv/
+build/
 __pycache__/
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.vercel
+.env*

@@ -1,0 +1,64 @@
+name: CI
+
+# Also callable from the deploy workflows, so tests gate every deployment
+# without the steps being duplicated in three places.
+on:
+  pull_request:
+  push:
+    branches: [main, staging]
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        # 18 to match what Neon provisions, not the 16 used for local dev.
+        # The schema is version-agnostic, but CI is the place to find out if
+        # that ever stops being true.
+        image: postgres:18
+        env:
+          POSTGRES_USER: jobhunt
+          POSTGRES_PASSWORD: jobhunt
+          POSTGRES_DB: jobhunt_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jobhunt"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # conftest.py defaults to the local dev cluster on 5433; CI's container
+      # is on 5432. Tests TRUNCATE, so this must never point at Neon.
+      JOBHUNT_TEST_DATABASE_URL: postgresql://jobhunt:jobhunt@localhost:5432/jobhunt_test
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          # Reads .python-version, which vercel build wrote and we commit, so
+          # CI, local and the deployed runtime cannot drift apart.
+          python-version-file: .python-version
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Test
+        # No network: source adapters run against captured fixtures. A test
+        # that reaches the internet would make CI fail on someone else's outage.
+        run: pytest -q

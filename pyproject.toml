@@ -6,6 +6,7 @@ description = "Automated job discovery and application preparation"
 # and deployed interpreters match exactly. Vercel defaults to 3.12 when unset.
 requires-python = ">=3.14"
 dependencies = [
+    "fastapi>=0.117",
     "httpx>=0.27",
     "psycopg[binary,pool]>=3.2",
     "PyYAML>=6.0",
@@ -23,8 +24,13 @@ dev = [
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
+[tool.vercel]
+# Explicit rather than relying on filename detection, so moving the file does
+# not silently change what Vercel loads.
+entrypoint = "api.index:app"
+
 [tool.setuptools.packages.find]
-include = ["pipeline*", "scripts*"]
+include = ["pipeline*", "scripts*", "api*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

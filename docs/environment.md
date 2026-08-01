@@ -92,8 +92,36 @@ vercel login
 
 ```bash
 vercel link              # prompts: create a new project → name it job_hunt
-vercel git connect       # attaches the GitHub repo you made in step 1
 ```
+
+Answer **N** to "Want to modify these settings?" — the Python runtime resolves
+the FastAPI app on its own and there is no build step, since Tailwind CSS is
+built on your Mac and committed to `public/`.
+
+**Do not run `vercel git connect`.** Deploys go through GitHub Actions using a
+token, so the project never needs Vercel's GitHub App installed on the repo:
+
+```bash
+vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+vercel build --prod
+vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+```
+
+This is the documented path — `vercel project add` exists specifically to create
+a project "without an existing Git integration". It also removes a failure mode:
+with no repo connected there are no automatic deploys to disable, so Vercel can
+never ship a commit whose tests failed.
+
+What you give up: Vercel's bot commenting preview URLs on pull requests, and
+auto-deploy on push. Both are things this design does from Actions anyway.
+Deployments appear as CLI deploys rather than carrying commit and branch
+metadata — attach it with `--meta githubCommitSha=$GITHUB_SHA` if you want it
+in the dashboard. Instant Rollback is unaffected.
+
+**The token is still a personal credential.** Scoping it to the team does not
+make the deploy identity impersonal — it acts with the permissions of whoever
+created it, and Vercel has no true service accounts below Enterprise. Fine for
+a single-user project; rotate it if it ever leaks.
 
 `vercel link` writes `.vercel/project.json` (gitignored). Read the two IDs out
 of it — you will need them in step 5:
@@ -109,24 +137,54 @@ Then, in the dashboard:
   production-domain protection. On Hobby the production URL is public and this
   design does not hold — the UI shows your résumé, contact details and salary
   floor. *(Deferrable until Phase 3.)*
-- **Settings → Git →** disable automatic deployments. GitHub Actions owns
-  deploys so tests gate them; leaving this on means Vercel ships on every push
-  regardless of whether the suite passed.
+- **Settings → Git →** nothing to do, since the repo is never connected. If you
+  later connect one, set `git.deploymentEnabled: false` in `vercel.json` rather
+  than toggling the dashboard — version-controlled, and it cannot drift.
 - 🖱 **Settings → Deployment Protection →** Vercel Authentication, scope
   **All Deployments**. Verify in a private window that it challenges for login.
   *(Requires Pro.)*
 - **Account Settings → Tokens → Create Token**, scoped to this team. Copy it
-  now; it is shown once. Looks like:
-  `vercel_a1B2c3D4e5F6g7H8i9J0kL1m`
+  now; it is shown once. Plain alphanumeric, roughly 24 characters — e.g.
+  `A1b2C3d4E5f6G7h8I9j0K1l2`. The CLI rejects any value containing `-` or `.`,
+  which is how you can tell it apart from the OIDC token below.
+
+  **`VERCEL_OIDC_TOKEN` is not this token.** `vercel link` and `vercel pull`
+  write one into `.env.local`: a short-lived JWT for *runtime* workload identity
+  federation, so a deployed function can reach AWS or GCP without static keys.
+  Being a JWT it contains dots, so passing it to `--token` fails with
+  *"its contents are invalid. Must not contain: '-', '.'"*. Nothing in this
+  project reads `.env.local` — dotenv was removed — so the file is inert here
+  and only matters to `vercel dev`. It is gitignored either way.
 
 ### Step 4 — Neon Postgres
 
 <https://neon.com> → new project `jobhunt`, region **AWS us-east-1** — the same
 region as Vercel's `iad1`, so queries do not cross a continent.
 
-Then **Branches → New Branch**, name it `staging`, parent `main`. Branching is
-what makes staging honest: it forks production data copy-on-write, so the UI is
-exercised against realistically-shaped rows instead of an empty database.
+Neon names the default branch **`production`**, not `main`. Create the sibling
+from the CLI rather than the dashboard — it prints the connection string on
+creation, so nothing has to be copied by hand:
+
+```bash
+npx neonctl@latest auth                       # browser OAuth, one time
+npx neonctl@latest branches create --name staging --parent production
+```
+
+Branching is what makes staging honest: it forks production copy-on-write, so
+the schema and data come with it. Migrating `production` first means `staging`
+reports "already up to date" the moment it exists.
+
+Read the four strings back without retyping them:
+
+```bash
+npx neonctl@latest connection-string production --pooled   # → Vercel production
+npx neonctl@latest connection-string production            # → GH  NEON_DIRECT_URL_PRODUCTION
+npx neonctl@latest connection-string staging --pooled      # → Vercel preview
+npx neonctl@latest connection-string staging               # → GH  NEON_DIRECT_URL_STAGING
+```
+
+**Both branches share one role password.** Rotating `neondb_owner` invalidates
+all four strings at once, so a rotation means re-pushing four values, not two.
 
 Each branch exposes **two** connection strings that are not interchangeable:
 
@@ -135,20 +193,28 @@ Each branch exposes **two** connection strings that are not interchangeable:
 | **Pooled** | `-pooler` | runtime | Serverless opens a connection per instance; the direct endpoint exhausts `max_connections`. Costs session-level advisory locks and SQL-level `PREPARE` — which is why work claiming uses `FOR UPDATE SKIP LOCKED`. |
 | **Direct** | *(no `-pooler`)* | migrations only | DDL wants a stable session. |
 
-They differ by one substring, so copy carefully:
+They differ by one substring, so if you do copy them by hand, copy carefully:
 
 ```
-pooled  postgresql://jobhunt_owner:npg_R4nd0mStr1ng@ep-cool-darkness-a1b2c3d4-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require
-direct  postgresql://jobhunt_owner:npg_R4nd0mStr1ng@ep-cool-darkness-a1b2c3d4.us-east-1.aws.neon.tech/neondb?sslmode=require
-                                                                             ^^^^^^^ present in one, absent in the other
+pooled  postgresql://neondb_owner:npg_R4nd0mStr1ng@ep-cool-darkness-a1b2c3d4-pooler.c-12.us-east-1.aws.neon.tech/neondb?sslmode=require
+direct  postgresql://neondb_owner:npg_R4nd0mStr1ng@ep-cool-darkness-a1b2c3d4.c-12.us-east-1.aws.neon.tech/neondb?sslmode=require
+                                                                            ^^^^^^^ present in one, absent in the other
 ```
 
-You need four strings total: pooled + direct, for `main` and for `staging`.
+You need four strings total: pooled + direct, for `production` and `staging`.
 
 ### Step 5 — Push the values
 
 `vercel env add` reads the value from stdin and prompts if it is a terminal, so
 a pasted secret never enters shell history. One scope per invocation.
+
+`--token` is only for CI. Locally, `vercel login` already stored your
+credentials, so omit the flag entirely:
+
+```bash
+vercel env add DATABASE_URL production          # local: no --token
+vercel env add DATABASE_URL production --token=$VERCEL_TOKEN   # CI only
+```
 
 **To Vercel** — pooled strings:
 
@@ -187,6 +253,24 @@ for scope in production preview; do
 done
 # generates e.g. 8Kq2mZvR7nJx4TbW1yLdF6sHgP0aQeC3uInO5rVtXkY
 ```
+
+### A trap: do not add a `.vercelignore`
+
+With `vercel deploy --prebuilt`, a `.vercelignore` file makes the deploy fail
+with a misleading error:
+
+```
+Error: ENOENT: no such file or directory, lstat '/vercel/path0/docs/environment.md'
+```
+
+The named file exists. What happens is that `.vercelignore` excludes it from
+the upload while the build manifest still references it, so the remote side
+stats a path that was never sent. The error walks to a different file on each
+retry, which makes it look like a flaky cache problem rather than a config one.
+
+Use `excludeFiles` under `functions` in `vercel.json` instead — it governs what
+lands in the function bundle, which is the thing that actually matters for the
+500 MB limit, and it does not interfere with the upload.
 
 ### Step 6 — Verify
 
@@ -245,7 +329,7 @@ Eight variables. Only the first has no default.
 | `JOBHUNT_SALARY_FLOOR` | `125000` | Jobs whose *known* ceiling is below this are filtered out. Unknown salary always passes. |
 | `JOBHUNT_HOME_CITY` | `San Leandro` | Proximity ranking (Phase 2) |
 | `JOBHUNT_HOME_STATE` | `CA` | Proximity ranking (Phase 2) |
-| `JOBHUNT_RUN_BUDGET_SECONDS` | `600` | Seconds before a run returns early with `budget_hit=true`. Vercel Pro hard-kills at 800s; 600 leaves room to record the run and respond. |
+| `JOBHUNT_RUN_BUDGET_SECONDS` | `240` | Seconds before a run returns early with `budget_hit=true`. **Coupled to `maxDuration` in `vercel.json`** — Vercel hard-kills at the ceiling and logs nothing for a killed invocation, so a budget above it can never fire. Hobby caps `maxDuration` at 300; on Pro raise both to 800/600 together. A test asserts the two stay in sync. |
 | `JOBHUNT_USER_AGENT` | see `config.py` | Sent on every outbound request. Keep a working contact address in it — an operator who can reach a human is less likely to reach for an IP block. |
 | `JOBHUNT_PROFILE_DIR` | `./profile` | Where `targets.yaml` and personal data live |
 | `JOBHUNT_MIGRATIONS_DIR` | `./migrations` | Rarely overridden |
@@ -345,7 +429,7 @@ vercel env add USAJOBS_USER_AGENT production  # must be the registered email
 | `DATABASE_URL` | Vercel prod + preview | Neon **pooled**, per branch | Phase 0 |
 | `JOBHUNT_*` | optional, any | defaults in `pipeline/config.py` | — |
 | `NEON_DIRECT_URL_PRODUCTION` / `_STAGING` | GitHub | Neon **direct**, per branch | Phase 0 |
-| `VERCEL_TOKEN` | GitHub | `vercel_a1B2c3D4e5F6g7H8i9J0kL1m` | Phase 0 |
+| `VERCEL_TOKEN` | GitHub **only** | `A1b2C3d4E5f6G7h8I9j0K1l2` — personal, rotate if leaked. Not `VERCEL_OIDC_TOKEN`. | Phase 0 |
 | `VERCEL_ORG_ID` | GitHub | `team_a1B2c3D4e5F6g7H8` | Phase 0 |
 | `VERCEL_PROJECT_ID` | GitHub | `prj_9zY8xW7vU6tS5rQ4` | Phase 0 |
 | `CRON_SECRET` | Vercel prod + preview | self-generated, ≥32 chars | Phase 0 |

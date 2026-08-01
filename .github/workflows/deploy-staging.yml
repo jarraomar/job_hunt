@@ -1,0 +1,73 @@
+name: Deploy staging
+
+on:
+  push:
+    branches: [staging]
+
+# Serialise deploys. Two overlapping runs would also run migrations
+# concurrently against the same Neon branch.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+
+      - name: Install uv
+        # `vercel build` shells out to uv to resolve dependencies. It is present
+        # on Vercel's own build machines but not on a GitHub runner, and the
+        # failure ("uv is required but was not found in PATH") arrives only at
+        # build time.
+        uses: astral-sh/setup-uv@v9
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Migrate Neon staging
+        # Before the deploy is promoted, and against the DIRECT endpoint: DDL
+        # wants a stable session, and the pooled endpoint is transaction-scoped.
+        #
+        # Migrations must stay backward-compatible with the currently-live code,
+        # because it keeps serving during this window. Add columns nullable;
+        # never rename or drop in the same deploy that stops using them.
+        run: |
+          pip install -e "."
+          python scripts/migrate.py
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DIRECT_URL_STAGING }}
+
+      - name: Build
+        run: vercel build --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy
+        # Preview target: Vercel resolves the Preview-scoped environment
+        # variables, which point DATABASE_URL at the Neon staging branch.
+        run: |
+          url=$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")
+          echo "Deployed: $url"
+          echo "### Staging: $url" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

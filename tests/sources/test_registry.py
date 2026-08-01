@@ -41,3 +41,34 @@ def test_aggregators_need_no_tokens():
     targets = load_targets(EXAMPLE)
     for key in TOKENLESS_SOURCES:
         assert not targets.get(key), f"{key} should not need tokens"
+
+
+def test_targets_json_env_var_wins_over_the_file(monkeypatch):
+    monkeypatch.setenv("JOBHUNT_TARGETS_JSON", '{"greenhouse": ["acme"]}')
+    assert load_targets(EXAMPLE) == {"greenhouse": ["acme"]}
+
+
+def test_the_profile_file_is_never_read_on_vercel(monkeypatch):
+    """profile/ ships with a Vercel build and excludeFiles does not stop it.
+
+    Confirmed in production: a deployed run crawled boards listed only in a
+    local profile/targets.yaml. From Phase 2 that directory holds a home
+    address, phone number, work-authorization answers and a salary floor, so
+    the deployed code must not read it even when it is present.
+    """
+    monkeypatch.setenv("VERCEL", "1")
+    monkeypatch.delenv("JOBHUNT_TARGETS_JSON", raising=False)
+    assert load_targets(EXAMPLE) == {}
+
+
+def test_the_file_is_still_read_locally(monkeypatch):
+    monkeypatch.delenv("VERCEL", raising=False)
+    monkeypatch.delenv("JOBHUNT_TARGETS_JSON", raising=False)
+    assert "stripe" in load_targets(EXAMPLE)["greenhouse"]
+
+
+def test_malformed_targets_json_is_not_silently_ignored(monkeypatch, caplog):
+    monkeypatch.setenv("JOBHUNT_TARGETS_JSON", "{not json")
+    with caplog.at_level("ERROR"):
+        assert load_targets(EXAMPLE) == {}
+    assert any("not valid JSON" in r.message for r in caplog.records)

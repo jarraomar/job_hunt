@@ -13,9 +13,17 @@ _ROOT = Path(__file__).resolve().parents[1]
 # human is less likely to reach for an IP block (spec section 7).
 USER_AGENT = "jobhunt/0.1 (personal job search; contact: developer@cloudbaseservices.com)"
 
-# Vercel Pro terminates a function at 800s. Stopping at 600 leaves room to
-# finish bookkeeping and return a response; a killed invocation records nothing
-# at all, so the run would be invisible rather than merely incomplete.
+# MUST stay below `maxDuration` in vercel.json. The two are coupled: Vercel
+# hard-kills at maxDuration and records nothing for a killed invocation, so a
+# budget above the ceiling can never fire and every over-long run becomes
+# invisible rather than merely incomplete.
+#
+#   Hobby      maxDuration 300 (cap)      -> budget 240
+#   Pro        maxDuration 800            -> budget 600
+#
+# Currently on Pro. Raise or lower both together, never one alone; a test
+# asserts this constant still matches vercel.json.
+INVOCATION_CEILING_SECONDS = 800.0
 DEFAULT_RUN_BUDGET_SECONDS = 600.0
 
 

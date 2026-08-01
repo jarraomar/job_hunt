@@ -14,8 +14,10 @@
 #   ./scripts/dev_db.sh status
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PGDATA="$ROOT/.pgdata"
+# Deliberately outside the repo. A cluster inside the project tree gets walked
+# by `vercel deploy` (its socket lock file caused an ENOENT mid-upload), by
+# ruff, and by anything else that globs the working directory.
+PGDATA="${JOBHUNT_PGDATA:-$HOME/.local/share/jobhunt/pgdata}"
 PORT=5433
 PGBIN="/opt/homebrew/opt/postgresql@16/bin"
 DB=jobhunt_test
@@ -24,6 +26,7 @@ USER=jobhunt
 [ -x "$PGBIN/postgres" ] || { echo "postgresql@16 not found at $PGBIN" >&2; exit 1; }
 
 start() {
+  mkdir -p "$(dirname "$PGDATA")"
   if [ ! -d "$PGDATA" ]; then
     echo "initializing cluster in $PGDATA"
     "$PGBIN/initdb" -D "$PGDATA" -U "$USER" --auth=trust >/dev/null

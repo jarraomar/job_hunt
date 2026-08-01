@@ -1,8 +1,10 @@
 import dataclasses
+import json
+from pathlib import Path
 
 import pytest
 
-from pipeline.config import load_settings
+from pipeline.config import INVOCATION_CEILING_SECONDS, load_settings
 
 DSN = "postgresql://x/y"
 
@@ -35,10 +37,22 @@ def test_env_overrides_defaults():
 
 
 def test_run_budget_leaves_headroom_below_the_invocation_ceiling():
-    # Vercel Pro hard-kills at 800s. The budget must leave room to write run_log
-    # and return a response — a killed invocation records nothing at all.
+    """The budget and vercel.json's maxDuration are coupled.
+
+    Vercel hard-kills at maxDuration and records nothing for a killed
+    invocation, so a budget at or above the ceiling can never fire — every
+    over-long run would vanish instead of reporting budget_hit.
+    """
     s = load_settings(env={"DATABASE_URL": DSN})
-    assert s.run_budget_seconds <= 700
+    assert s.run_budget_seconds < INVOCATION_CEILING_SECONDS
+    assert s.run_budget_seconds <= INVOCATION_CEILING_SECONDS * 0.9
+
+
+def test_the_declared_ceiling_matches_vercel_json():
+    """A drift here is silent: the code would plan for headroom it lacks."""
+    config = json.loads((Path(__file__).resolve().parents[1] / "vercel.json").read_text())
+    declared = config["functions"]["api/index.py"]["maxDuration"]
+    assert declared == INVOCATION_CEILING_SECONDS
 
 
 def test_user_agent_identifies_a_contact():

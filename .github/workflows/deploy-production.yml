@@ -1,0 +1,80 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+
+      - name: Install uv
+        # `vercel build` shells out to uv. Absent on GitHub runners; the failure
+        # ("uv is required but was not found in PATH") surfaces only at build.
+        uses: astral-sh/setup-uv@v9
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Migrate Neon production
+        # DIRECT endpoint, before promotion, backward-compatible only: the
+        # currently-live deployment keeps serving against the new schema during
+        # this window.
+        run: |
+          pip install -e "."
+          python scripts/migrate.py
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DIRECT_URL_PRODUCTION }}
+
+      - name: Build
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "### Production: $url" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Smoke test
+        # Asserts the deployment answers at all. Vercel Authentication guards
+        # the URL, so a 401/307 is success here -- it means the edge resolved
+        # the deployment. Anything else means the deploy produced nothing
+        # serviceable, which is worth catching now rather than at 06:05.
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$DEPLOY_URL/api/health" || echo 000)
+          echo "GET /api/health -> $code"
+          case "$code" in
+            200|401|403|307|308) echo "deployment is answering" ;;
+            *) echo "unexpected status $code"; exit 1 ;;
+          esac
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
