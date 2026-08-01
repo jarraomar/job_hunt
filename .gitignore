@@ -1,0 +1,28 @@
+# Personal data — never commit. Holds address, phone, work-authorization
+# status, and salary expectations (spec section 14).
+profile/
+seed/
+
+# Source documents at the repo root. These carry a home address and phone
+# number; without these lines a plain `git add .` would commit them.
+/Resume.pdf
+/Personalized Cover Letter.docx
+
+# Secrets. Configuration comes from the real environment (see
+# docs/environment.md); nothing here reads a dotenv file.
+.env
+.env.*
+
+# Vercel
+.vercel/
+
+# Local Postgres cluster used by the test suite
+.pgdata/
+
+# Python
+venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/

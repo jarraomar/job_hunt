@@ -1,0 +1,226 @@
+{
+  "exhaustive": {
+    "nbHits": true,
+    "typo": true
+  },
+  "exhaustiveNbHits": true,
+  "exhaustiveTypo": true,
+  "hits": [
+    {
+      "_highlightResult": {
+        "author": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "Daniel-Cross"
+        },
+        "comment_text": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "I have built something very similar a couple of times before, would be happy to chat. However I have a couple of questions around the payment models and how payouts work, it's very easy to create a ponzi scheme with products like this where you have to mint new shares/players in order to cover dividend payouts."
+        },
+        "story_title": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "Ask HN: Who is hiring? (July 2026)"
+        }
+      },
+      "_tags": [
+        "comment",
+        "author_Daniel-Cross",
+        "story_48747976"
+      ],
+      "author": "Daniel-Cross",
+      "comment_text": "I have built something very similar a couple of times before, would be happy to chat. However I have a couple of questions around the payment models and how payouts work, it&#x27;s very easy to create a ponzi scheme with products like this where you have to mint new shares&#x2F;players in order to cover dividend payouts.",
+      "created_at": "2026-07-22T16:10:43Z",
+      "created_at_i": 1784736643,
+      "objectID": "49009030",
+      "parent_id": 48885246,
+      "story_id": 48747976,
+      "story_title": "Ask HN: Who is hiring? (July 2026)",
+      "updated_at": "2026-07-22T16:15:31Z"
+    },
+    {
+      "_highlightResult": {
+        "author": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "libertat"
+        },
+        "comment_text": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "trust centre is insanely impressive btw! great work! do you allow anyone to request access to read the SOC 2 report or is it internal only? bcs i would love to take a look at that"
+        },
+        "story_title": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "Ask HN: Who is hiring? (July 2026)"
+        }
+      },
+      "_tags": [
+        "comment",
+        "author_libertat",
+        "story_48747976"
+      ],
+      "author": "libertat",
+      "comment_text": "trust centre is insanely impressive btw! great work! do you allow anyone to request access to read the SOC 2 report or is it internal only? bcs i would love to take a look at that",
+      "created_at": "2026-07-18T04:04:33Z",
+      "created_at_i": 1784347473,
+      "objectID": "48955117",
+      "parent_id": 48802744,
+      "story_id": 48747976,
+      "story_title": "Ask HN: Who is hiring? (July 2026)",
+      "updated_at": "2026-07-18T04:05:44Z"
+    },
+    {
+      "_highlightResult": {
+        "author": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "manishPatel123"
+        },
+        "comment_text": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "Full-Stack Developer | India (Open to Relocation &amp; Visa Sponsorship)<p>Tech Stack: React, Next.js, TypeScript, Node.js, FastAPI, PostgreSQL, MongoDB, Docker, GitHub Actions, REST APIs, AI/LLMs (LangChain, OpenAI, Gemini)\nOpen-source contributor to Meshery (CNCF), KubeEdge (CNCF), and omegaUp. Built production-ready projects including Error404 UI and InsightCareer AI.<p>GitHub: <a href=\"https://github.com/manishpatel00\" rel=\"nofollow\">https://github.com/manishpatel00</a> \ufffd\nPortfolio: <a href=\"https://manishdevin.vercel.app\" rel=\"nofollow\">https://manishdevin.vercel.app</a>\nError404 UI: <a href=\"https://error404-ui.vercel.app\" rel=\"nofollow\">https://error404-ui.vercel.app</a>\nResume: <a href=\"https://drive.google.com/file/d/1g1feAoFWI7AVZBjEM0UYAFBpbr1GZgLu/view?usp=drivesdk\" rel=\"nofollow\">https://drive.google.com/file/d/1g1feAoFWI7AVZBjEM0UYAFBpbr1...</a><p>I'm interested in the Founding Full-Stack Software Engineer role and will also send my application via email. Thank you!"
+        },
+        "story_title": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "Ask HN: Who is hiring? (July 2026)"
+        }
+      },
+      "_tags": [
+        "comment",
+        "author_manishPatel123",
+        "story_48747976"
+      ],
+      "author": "manishPatel123",
+      "comment_text": "Full-Stack Developer | India (Open to Relocation &amp; Visa Sponsorship)<p>Tech Stack: React, Next.js, TypeScript, Node.js, FastAPI, PostgreSQL, MongoDB, Docker, GitHub Actions, REST APIs, AI&#x2F;LLMs (LangChain, OpenAI, Gemini)\nOpen-source contributor to Meshery (CNCF), KubeEdge (CNCF), and omegaUp. Built production-ready projects including Error404 UI and InsightCareer AI.<p>GitHub: <a href=\"https:&#x2F;&#x2F;github.com&#x2F;manishpatel00\" rel=\"nofollow\">https:&#x2F;&#x2F;github.com&#x2F;manishpatel00</a> \ufffd\nPortfolio: <a href=\"https:&#x2F;&#x2F;manishdevin.vercel.app\" rel=\"nofollow\">https:&#x2F;&#x2F;manishdevin.vercel.app</a>\nError404 UI: <a href=\"https:&#x2F;&#x2F;error404-ui.vercel.app\" rel=\"nofollow\">https:&#x2F;&#x2F;error404-ui.vercel.app</a>\nResume: <a href=\"https:&#x2F;&#x2F;drive.google.com&#x2F;file&#x2F;d&#x2F;1g1feAoFWI7AVZBjEM0UYAFBpbr1GZgLu&#x2F;view?usp=drivesdk\" rel=\"nofollow\">https:&#x2F;&#x2F;drive.google.com&#x2F;file&#x2F;d&#x2F;1g1feAoFWI7AVZBjEM0UYAFBpbr1...</a><p>I&#x27;m interested in the Founding Full-Stack Software Engineer role and will also send my application via email. Thank you!",
+      "created_at": "2026-07-16T11:00:53Z",
+      "created_at_i": 1784199653,
+      "objectID": "48932861",
+      "parent_id": 48760010,
+      "story_id": 48747976,
+      "story_title": "Ask HN: Who is hiring? (July 2026)",
+      "updated_at": "2026-07-16T16:56:39Z"
+    },
+    {
+      "_highlightResult": {
+        "author": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "hakimuddinhh"
+        },
+        "comment_text": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "I think its a great fit for both of us, Applied on the job portal, but posting my linkedin here just in case - linkedin.com/in/hakimuddin-haweliwala"
+        },
+        "story_title": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "Ask HN: Who is hiring? (July 2026)"
+        }
+      },
+      "_tags": [
+        "comment",
+        "author_hakimuddinhh",
+        "story_48747976"
+      ],
+      "author": "hakimuddinhh",
+      "children": [
+        49105403
+      ],
+      "comment_text": "I think its a great fit for both of us, Applied on the job portal, but posting my linkedin here just in case - linkedin.com&#x2F;in&#x2F;hakimuddin-haweliwala",
+      "created_at": "2026-07-16T08:59:41Z",
+      "created_at_i": 1784192381,
+      "objectID": "48932007",
+      "parent_id": 48842567,
+      "story_id": 48747976,
+      "story_title": "Ask HN: Who is hiring? (July 2026)",
+      "updated_at": "2026-07-30T02:12:26Z"
+    },
+    {
+      "_highlightResult": {
+        "author": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "baaaadegg"
+        },
+        "comment_text": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "Founding Technologist + Full Stack Developer | REMOTE | Part-or-full-time | $0 + equity<p>Looking for a founding dev for an early wellness and spirituality project. Product focus is on video streaming, audio quality, data privacy, and global payments. A working MVP is live on web, Android, and iOS. Stack includes: Next.js/React Native, Tailwind, TypeScript, Agora RTC, and Firebase.<p>We're two non-YC entrepreneurs with experience in blockchain, education, hospitality, and service-based businesses. We hope to find someone who shares an interest in developing their wellness and spirituality practice. The aim is to keep the team small and development tight, as the product goals are clearly defined.<p>Please reach out over email if you have the capacity to learn more!<p>-Andrew, -Michal<p>hataginow@gmail.com"
+        },
+        "story_title": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "Ask HN: Who is hiring? (July 2026)"
+        }
+      },
+      "_tags": [
+        "comment",
+        "author_baaaadegg",
+        "story_48747976"
+      ],
+      "author": "baaaadegg",
+      "comment_text": "Founding Technologist + Full Stack Developer | REMOTE | Part-or-full-time | $0 + equity<p>Looking for a founding dev for an early wellness and spirituality project. Product focus is on video streaming, audio quality, data privacy, and global payments. A working MVP is live on web, Android, and iOS. Stack includes: Next.js&#x2F;React Native, Tailwind, TypeScript, Agora RTC, and Firebase.<p>We&#x27;re two non-YC entrepreneurs with experience in blockchain, education, hospitality, and service-based businesses. We hope to find someone who shares an interest in developing their wellness and spirituality practice. The aim is to keep the team small and development tight, as the product goals are clearly defined.<p>Please reach out over email if you have the capacity to learn more!<p>-Andrew, -Michal<p>hataginow@gmail.com",
+      "created_at": "2026-07-15T12:32:31Z",
+      "created_at_i": 1784118751,
+      "objectID": "48919859",
+      "parent_id": 48747976,
+      "story_id": 48747976,
+      "story_title": "Ask HN: Who is hiring? (July 2026)",
+      "updated_at": "2026-07-20T19:55:24Z"
+    },
+    {
+      "_highlightResult": {
+        "author": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "jambalaya8"
+        },
+        "comment_text": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "Gosh, that hourly range is sort of staggeringly wide. Is it correct? Thanks."
+        },
+        "story_title": {
+          "matchLevel": "none",
+          "matchedWords": [],
+          "value": "Ask HN: Who is hiring? (July 2026)"
+        }
+      },
+      "_tags": [
+        "comment",
+        "author_jambalaya8",
+        "story_48747976"
+      ],
+      "author": "jambalaya8",
+      "comment_text": "Gosh, that hourly range is sort of staggeringly wide. Is it correct? Thanks.",
+      "created_at": "2026-07-15T04:25:59Z",
+      "created_at_i": 1784089559,
+      "objectID": "48916307",
+      "parent_id": 48900749,
+      "story_id": 48747976,
+      "story_title": "Ask HN: Who is hiring? (July 2026)",
+      "updated_at": "2026-07-15T04:28:19Z"
+    }
+  ],
+  "hitsPerPage": 6,
+  "nbHits": 436,
+  "nbPages": 73,
+  "page": 0,
+  "params": "tags=comment%2Cstory_48747976&hitsPerPage=6&advancedSyntax=true&analyticsTags=backend",
+  "processingTimeMS": 1,
+  "processingTimingsMS": {
+    "_request": {
+      "queue": 1,
+      "roundTrip": 19
+    },
+    "total": 1
+  },
+  "query": "",
+  "serverTimeMS": 3
+}

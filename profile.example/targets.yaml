@@ -1,0 +1,48 @@
+# Board tokens per ATS. Copy to profile/targets.yaml and edit.
+#
+#   mkdir -p profile && cp profile.example/targets.yaml profile/targets.yaml
+#
+# Finding a token: open a company's careers page and read the URL.
+#   job-boards.greenhouse.io/stripe        -> greenhouse: stripe
+#   jobs.lever.co/spotify                  -> lever:      spotify
+#   jobs.ashbyhq.com/ramp                  -> ashby:      ramp
+#
+# Verify before adding. A wrong token fails in two different ways, and only one
+# of them is loud:
+#   * 404            -> logged as a failed board
+#   * 200 with []    -> a retired board, indistinguishable from "nothing open"
+# The adapters warn on the empty case, but check the count yourself first:
+#   curl -s "https://api.lever.co/v0/postings/<token>?mode=json" | head -c 200
+#
+# Every token below was verified live on 2026-08-01 with the count shown.
+# Companies migrate between ATSes, so re-check any token that goes quiet.
+
+greenhouse:
+  - stripe # 548 open roles
+  - figma # 176
+  - gitlab # 184
+  - databricks # 803
+  - anthropic # 400
+  - cloudflare # 285
+  - robinhood # 128
+  - affirm # 181
+  - brex # 302
+  - samsara # 308
+
+lever:
+  - spotify # 105
+  - matchgroup # 83
+  - fetchpackage # 24
+
+# Publishing compensation is a per-employer Ashby setting, not a platform
+# guarantee. The percentage is how many of that board's postings carried
+# structured salary when checked -- boards at 0% still contribute jobs, their
+# salary just falls back to text parsing like everywhere else.
+ashby:
+  - ramp # 126 roles, 95% with structured compensation
+  - openai # 753, 80%
+  - perplexity # 87, 82%
+  - vanta # 100, 62%
+  - clickhouse # 166, 0%
+  - notion # 109, 0%
+  - cursor # 120, 0%
