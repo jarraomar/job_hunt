@@ -268,13 +268,45 @@ Resume lives as `profile/resume.json` — structured, factual, hand-maintained.
 **Per role:**
 - **Haiku 4.5** rewrites the professional summary and reorders/re-emphasizes the skills section against the JD's keywords.
   **Fabrication guardrail:** employment history, dates, titles, employers, and metrics are copied through by code. The model receives them as read-only context and its output schema has no field that can alter them. There is no code path by which a model edit reaches a factual field.
-- **Sonnet 5** writes the cover letter: 3 paragraphs, one specific JD requirement, one company-specific detail, banned-cliché list, few-shot on `profile/voice_samples.md`. `output_config={"effort": "low"}` with adaptive thinking.
+- **Sonnet 5** fills Jarra's existing cover-letter template rather than writing prose from scratch. See §10.1.
 - Both render `python-docx` → `.docx` and Jinja2+CSS → WeasyPrint → PDF.
 - **One-page loop:** `len(HTML(...).render().pages)`; if > 1, regenerate with a reduced word budget (feeding back the current count), **max 2 retries**, then flag in the UI rather than loop forever.
 
 **PDF is the primary artifact.** WeasyPrint's pagination is what gets verified; the `.docx` is an unverified fallback for the rare form that demands Word. Greenhouse, Lever, Ashby, and Workday all parse PDF correctly in 2026, and every submission is human-reviewed anyway.
 
 ATS-safe formatting: single column, standard section headings, no tables/text boxes/headers-footers for content, standard fonts, no images.
+
+### 10.1 Cover letter: slot-filling, not free composition
+
+`Personalized Cover Letter.docx` is a structured template, not a sample letter. Its shape:
+
+| Block | Handling |
+|---|---|
+| Header (name, title, phone, email, location) | **Fixed.** Rendered from `profile/identity.yaml`. |
+| Date, hiring manager, company, address, `RE: [JOB TITLE], [JOB ID]` | **Mechanical.** Filled from the `jobs` row. Recipient lines are omitted when unknown rather than guessed — never invent a hiring manager's name. |
+| ¶1 intro | **Boilerplate + 2 slots** (`[JOB TITLE]`, `[COMPANY NAME]`). Prose is fixed. |
+| ¶2 CloudBase background | **Fixed.** Factual history — never model-touched. |
+| "My experience aligns with this position in several areas:" | **Fixed.** |
+| 4 labeled competency bullets | **The only generated content.** See below. |
+| Closing (`[COMPANY NAME]`, `[TEAM OR DEPARTMENT NAME]`) | Boilerplate + 2 slots. |
+| `Sincerely,` + name | **Fixed.** |
+
+**The model's job is selection and re-emphasis, not invention.** `profile/competency_bullets.yaml` holds a pool of labeled bullets — the four in the template (Full-Stack Development, AI and Automation, Measurable Product Impact, Cloud and DevOps) are the seed, and more can be added over time (Embedded/Computer Engineering, Search & Ranking, Constraint Optimization — all backed by real resume content). Per job, Sonnet 5:
+
+1. **Selects** the 4 most relevant bullets from the pool.
+2. **Reorders** them by relevance to the JD.
+3. **Rewords** each toward the JD's vocabulary, subject to a hard constraint: every technology, metric, and claim must already appear in the source bullet. Output is validated against the pool — a bullet mentioning a technology absent from `profile/` fails the render and is flagged in the UI.
+
+This is a strictly better design than the "3 freeform paragraphs" in the original spec:
+
+- **Voice is preserved structurally.** It is already Jarra's writing; the model edits rather than imitates. `profile/voice_samples.md` becomes unnecessary — the template *is* the voice sample.
+- **Fabrication surface shrinks to near zero.** The model can only recombine pre-approved claims.
+- **Cost drops sharply.** Output is ~4 short bullets (~250 tokens) instead of ~600 tokens of prose, and the fixed blocks sit in the cached prefix.
+- **One-page fit is near-deterministic.** Only the bullets vary in length, so the retry loop in §10 rarely fires.
+
+The `[TEAM OR DEPARTMENT NAME]` slot is filled only when the JD names a team; otherwise the closing sentence drops that clause rather than guessing.
+
+**Existing layout is one-page-tuned and must be preserved:** margins 0.70″ left / 0.67″ right / 0.30″ top / 0.40″ bottom. The WeasyPrint CSS mirrors these exactly so the PDF matches the `.docx`.
 
 ## 11. LLM cost controls
 
@@ -353,11 +385,14 @@ job_hunt/
 │   ├── worker.py               # work_queue poller
 │   └── run_daily.py
 ├── profile/                    # GITIGNORED — personal data
-│   ├── resume.json
+│   ├── identity.yaml           # name, title, phone, email, location, URLs
+│   ├── resume.json             # seeded from Resume.pdf
+│   ├── competency_bullets.yaml # labeled bullet pool (§10.1)
+│   ├── cover_letter.html.j2    # template, margins mirrored from the .docx
 │   ├── answer_bank.yaml
-│   ├── voice_samples.md
 │   └── targets.yaml
-├── profile.example/            # committed templates
+├── profile.example/            # committed templates, no personal data
+├── seed/                       # Resume.pdf + Personalized Cover Letter.docx (gitignored)
 ├── web/
 │   ├── main.py                 # FastAPI app
 │   ├── templates/              # Jinja2
