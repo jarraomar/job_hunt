@@ -1,0 +1,45 @@
+<article class="rounded-lg border border-stone-200 bg-white p-4 hover:border-stone-300">
+  <div class="flex items-baseline justify-between gap-4">
+    <h2 class="text-base font-semibold leading-snug">
+      <a href="/job/{{ job.job_id }}" class="hover:underline">{{ job.title }}</a>
+    </h2>
+    <span class="shrink-0 text-sm tabular-nums text-stone-500">{{ job.total_score | pct }}</span>
+  </div>
+
+  <p class="mt-1 text-sm text-stone-600">
+    {{ job.company_name }} · {{ job.location or 'location not listed' }}
+    · {{ job.remote_type }} · {{ job.salary_min | money(job.salary_max) }}
+    · {{ job.posted_at | ago }}
+  </p>
+
+  {% if job.rationale %}
+    {# The rationale is what makes the queue reviewable in ten minutes. The
+       score alone tells you nothing the ranking did not already say. #}
+    <p class="mt-2 text-sm leading-relaxed text-stone-800">{{ job.rationale }}</p>
+  {% endif %}
+
+  <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+    {% if job.relevance_verdict %}
+      <span class="rounded bg-stone-100 px-2 py-0.5 font-medium">{{ job.relevance_verdict }}</span>
+    {% else %}
+      <span class="rounded bg-stone-50 px-2 py-0.5 text-stone-500">not yet judged</span>
+    {% endif %}
+    {% if job.is_stretch %}
+      <span class="rounded bg-amber-100 px-2 py-0.5 text-amber-900">stretch</span>
+    {% endif %}
+    {# Only the classes that need a second look. "local" is the expected case
+       and badging it would make the badge mean nothing. #}
+    {% if job.location_class == 'unknown' %}
+      <span class="rounded bg-stone-100 px-2 py-0.5 text-stone-600"
+            title="No location in the posting — check before applying.">location not stated</span>
+    {% elif job.location_class in ('us', 'us_wide') %}
+      <span class="rounded bg-sky-100 px-2 py-0.5 text-sky-900">
+        {{ 'US remote' if job.location_class == 'us' else 'US, office not stated' }}
+      </span>
+    {% endif %}
+    {% if job.sharia_verdict == 'flagged' %}
+      <span class="rounded bg-orange-100 px-2 py-0.5 text-orange-900"
+            title="{{ job.sharia_reason }}">sharia: flagged — needs your call</span>
+    {% endif %}
+  </div>
+</article>

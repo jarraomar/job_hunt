@@ -1,0 +1,11 @@
+/* Automatic source detection is disabled deliberately.
+ *
+ * Tailwind v4 scans the whole project by default, so any file containing
+ * something that looks like a utility class changes the generated CSS --
+ * adding one test file grew the output from 16,120 to 17,754 bytes. That makes
+ * the committed stylesheet non-reproducible and the CI drift check flaky.
+ *
+ * With source(none) the output depends only on the templates below, so
+ * `git diff --exit-code web/static/app.css` means what it says. */
+@import "tailwindcss" source(none);
+@source "../templates/**/*.html";

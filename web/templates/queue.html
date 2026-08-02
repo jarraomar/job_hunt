@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Queue — job_hunt{% endblock %}
+{% block content %}
+  <div class="mb-4 flex items-baseline justify-between gap-4">
+    <h1 class="text-lg font-semibold">
+      Queue
+      <span class="font-normal text-stone-400">
+        {% if filters.is_active %}
+          {{ jobs | length }} of {{ facets.total }}
+        {% else %}
+          ({{ facets.total }})
+        {% endif %}
+      </span>
+    </h1>
+    <span class="text-xs text-stone-500">
+      max {{ filters.per_company_cap }} per company
+    </span>
+  </div>
+
+  {% include "_partials/filter_bar.html" %}
+
+  {% if not jobs %}
+    <p class="rounded-lg border border-dashed border-stone-300 p-8 text-center text-sm text-stone-500">
+      {% if filters.is_active %}
+        Nothing matches these filters.
+        <a href="/" class="underline">Clear them</a> to see the whole queue.
+      {% else %}
+        Nothing to review. No jobs are scored and waiting — the next discovery
+        run is within 10 minutes.
+      {% endif %}
+    </p>
+  {% else %}
+    <div class="space-y-3">
+      {% for job in jobs %}{% include "_partials/job_card.html" %}{% endfor %}
+    </div>
+
+    {# Paging carries the current filters. A "next" link that dropped them
+       would silently widen the result set halfway through reading it. #}
+    {% if offset or has_next %}
+      <div class="mt-5 flex items-center justify-between text-sm">
+        {% if offset %}
+          <a class="rounded border border-stone-300 px-3 py-1 hover:bg-stone-100"
+             href="/?{{ paging_query }}&offset={{ [offset - page_size, 0] | max }}">← previous</a>
+        {% else %}<span></span>{% endif %}
+        <span class="text-xs text-stone-500">
+          {{ offset + 1 }}–{{ offset + jobs | length }}
+        </span>
+        {% if has_next %}
+          <a class="rounded border border-stone-300 px-3 py-1 hover:bg-stone-100"
+             href="/?{{ paging_query }}&offset={{ offset + page_size }}">next →</a>
+        {% else %}<span></span>{% endif %}
+      </div>
+    {% endif %}
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}{{ job.title }} — job_hunt{% endblock %}
+{% block content %}
+  <a href="/" class="text-sm text-stone-500 hover:underline">← queue</a>
+
+  <h1 class="mt-2 text-xl font-semibold leading-tight">{{ job.title }}</h1>
+  <p class="mt-1 text-sm text-stone-600">
+    {{ job.company_name }} · {{ job.location or 'location not listed' }}
+    · {{ job.remote_type }} · {{ job.salary_min | money(job.salary_max) }}
+    · posted {{ job.posted_at | ago }}
+  </p>
+
+  {% if job.sharia_verdict == 'flagged' %}
+    <div class="mt-4 rounded border border-orange-300 bg-orange-50 p-3 text-sm">
+      <strong>Sharia screen: flagged.</strong> {{ job.sharia_reason }}
+      <span class="text-stone-600">Set a permanent override in Settings.</span>
+    </div>
+  {% elif job.sharia_verdict == 'excluded' %}
+    <div class="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm">
+      <strong>Sharia screen: excluded.</strong> {{ job.sharia_reason }}
+      <span class="text-stone-600">Override in Settings if this is wrong.</span>
+    </div>
+  {% endif %}
+
+  {% if job.rationale %}
+    <div class="mt-4 rounded border border-stone-200 bg-white p-3">
+      <h2 class="text-sm font-semibold">Why this matched</h2>
+      <p class="mt-1 text-sm leading-relaxed">{{ job.rationale }}</p>
+      <p class="mt-2 text-xs text-stone-500">
+        {{ job.relevance_verdict }} · score {{ job.total_score | pct }}
+        · similarity {{ job.embed_similarity | pct }}
+        · rules {{ job.rule_score | pct }}
+        · freshness {{ job.freshness_score | pct }}
+      </p>
+    </div>
+  {% elif job.total_score %}
+    <p class="mt-4 text-sm text-stone-500">
+      Scored {{ job.total_score | pct }}; not judged yet — only the top-ranked
+      jobs get a model read each day.
+    </p>
+  {% endif %}
+
+  <div class="mt-4 flex flex-wrap items-center gap-3">
+    {# A plain link, in a new tab. Spec section 3: no automated process ever
+       authenticates as Jarra on a job platform, so this is never a form post
+       and there is no browser in the dependency tree. #}
+    <a href="{{ job.apply_url }}" target="_blank" rel="noopener noreferrer"
+       class="rounded bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700">
+      Open apply page ↗
+    </a>
+    {% include "_partials/status_buttons.html" %}
+  </div>
+
+  {% if answers %}{% include "_partials/apply_prep.html" %}{% endif %}
+
+  <section class="mt-6 rounded border border-stone-200 bg-white p-4">
+    <h2 class="text-sm font-semibold">Job description</h2>
+    <div class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-stone-800">{{ job.description }}</div>
+  </section>
+{% endblock %}
