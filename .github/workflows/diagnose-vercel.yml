@@ -1,0 +1,72 @@
+name: Diagnose Vercel auth
+
+# Temporary. Delete once the deploy pipeline is green.
+#
+# "Could not retrieve Project Settings" is the same message for a bad token, a
+# token scoped to the wrong account, a wrong project id, and a secret stored
+# with a trailing newline. This separates them.
+#
+# Every secret reaches the shell through `env:` rather than being interpolated
+# into a `run:` string. Nothing here reads attacker-controllable event input,
+# but the habit is what keeps a later edit from introducing an injection.
+#
+# Safe to log: GitHub masks secret values, and the only things printed are
+# lengths and yes/no answers, never a value.
+
+on:
+  workflow_dispatch:
+
+env:
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+  ORG: ${{ secrets.VERCEL_ORG_ID }}
+  PROJECT: ${{ secrets.VERCEL_PROJECT_ID }}
+  TEAM_SLUG: bay-area-dawah
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Shape of each secret
+        run: |
+          # A trailing newline is invisible everywhere except a byte count, and
+          # `echo "..." | gh secret set` adds one.
+          printf 'token   bytes=%s\n' "${#VERCEL_TOKEN}"
+          printf 'org     bytes=%s  looks_like_team=%s\n' "${#ORG}" \
+            "$(case "$ORG" in team_*) echo yes;; *) echo NO;; esac)"
+          printf 'project bytes=%s  looks_like_prj=%s\n' "${#PROJECT}" \
+            "$(case "$PROJECT" in prj_*) echo yes;; *) echo NO;; esac)"
+          for name in VERCEL_TOKEN ORG PROJECT; do
+            value="${!name}"
+            printf '%-13s whitespace_or_newline: %s\n' "$name" \
+              "$(printf '%s' "$value" | grep -qP '[\s]' && echo YES || echo no)"
+          done
+
+      - name: Who does this token authenticate as
+        continue-on-error: true
+        run: vercel whoami --token="$VERCEL_TOKEN"
+
+      - name: What teams can it see
+        continue-on-error: true
+        run: vercel teams ls --token="$VERCEL_TOKEN"
+
+      - name: What projects, scoped to the team by slug
+        continue-on-error: true
+        run: vercel project ls --scope="$TEAM_SLUG" --token="$VERCEL_TOKEN"
+
+      - name: Pull with an explicit --scope instead of VERCEL_ORG_ID
+        continue-on-error: true
+        env:
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          vercel pull --yes --environment=production \
+            --scope="$TEAM_SLUG" --token="$VERCEL_TOKEN"
+
+      - name: Pull exactly the way the deploy workflow does
+        continue-on-error: true
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
