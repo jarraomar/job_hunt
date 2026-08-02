@@ -34,7 +34,10 @@ jobs:
         # on Vercel's own build machines but not on a GitHub runner, and the
         # failure ("uv is required but was not found in PATH") arrives only at
         # build time.
-        uses: astral-sh/setup-uv@v9
+        # Pinned to the full release tag. astral-sh publishes floating
+        # major tags only up to v7, so `@v9` does not resolve and the
+        # job dies in "Set up job" before running a single step.
+        uses: astral-sh/setup-uv@v9.0.0
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
