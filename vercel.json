@@ -10,6 +10,10 @@
     {
       "path": "/api/cron/discover",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/score",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

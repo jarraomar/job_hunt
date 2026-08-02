@@ -25,8 +25,10 @@ from pipeline.config import load_settings
 from pipeline.db import close_pool, connection
 from pipeline.http import PoliteSession
 from pipeline.run_discover import run
+from pipeline.run_score import run as score_run
 from pipeline.sources.base import SourceConfig
 from pipeline.sources.registry import SOURCES, load_targets
+from web import register
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("jobhunt.api")
@@ -67,11 +69,6 @@ def _require_cron_auth(authorization: str | None) -> None:
         raise HTTPException(status_code=401, detail="unauthorized")
     if not secrets.compare_digest(header.removeprefix("Bearer "), expected):
         raise HTTPException(status_code=401, detail="unauthorized")
-
-
-@app.get("/")
-async def root() -> dict:
-    return {"service": "job_hunt", "phase": 1, "ui": "arrives in phase 3"}
 
 
 @app.get("/api/health")
@@ -140,3 +137,36 @@ async def cron_discover(
         "budget_hit": stats.budget_hit,
         "duration_ms": stats.duration_ms,
     }
+
+
+@app.get("/api/cron/score")
+async def cron_score(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict:
+    """One scoring pass: embed everything unscored, judge the top N.
+
+    Returns 200 with the stats even on a partial run, for the same reason as
+    discovery: the work is durable and the next tick resumes, so a non-200
+    would report a failure for what is normal behaviour.
+    """
+    _require_cron_auth(authorization)
+
+    settings = load_settings()
+    async with connection() as conn:
+        stats = await score_run(conn, settings)
+
+    log.info("score: %s", stats)
+    return {
+        "scored": stats.scored,
+        "judged": stats.judged,
+        "screened": stats.screened,
+        "errors": stats.errors,
+        "spend_usd": str(stats.spend_usd),
+        "budget_hit": stats.budget_hit,
+        "duration_ms": stats.duration_ms,
+    }
+
+
+# Mounts /static and the four UI routes. Last, so the API routes above are
+# registered first and "/" resolves to the queue rather than a JSON stub.
+register(app)

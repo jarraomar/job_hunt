@@ -58,6 +58,13 @@ jobs:
           ruff check .
           ruff format --check .
 
+      - name: Check committed CSS is current
+        # A stale stylesheet fails silently -- the page just loses its
+        # styling, weeks after the template change that caused it.
+        run: |
+          ./scripts/build_css.sh
+          git diff --exit-code web/static/app.css
+
       - name: Test
         # No network: source adapters run against captured fixtures. A test
         # that reaches the internet would make CI fail on someone else's outage.

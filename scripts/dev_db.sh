@@ -10,7 +10,8 @@
 #
 #   ./scripts/dev_db.sh up      create if needed, then start
 #   ./scripts/dev_db.sh down    stop
-#   ./scripts/dev_db.sh reset   destroy and recreate from scratch
+#   ./scripts/dev_db.sh reset      drop and recreate the TEST database only
+#   ./scripts/dev_db.sh nuke       destroy the whole cluster (loses jobhunt_dev too)
 #   ./scripts/dev_db.sh status
 set -euo pipefail
 
@@ -44,7 +45,14 @@ start() {
 case "${1:-up}" in
   up)     start ;;
   down)   "$PGBIN/pg_ctl" -D "$PGDATA" stop || true ;;
-  reset)  "$PGBIN/pg_ctl" -D "$PGDATA" stop 2>/dev/null || true; rm -rf "$PGDATA"; start ;;
+  # Drops only the test database. `nuke` used to be spelled `reset`, which
+  # twice destroyed the dev corpus as collateral damage while verifying a
+  # migration test actually fails without its migration.
+  reset)  start >/dev/null
+          "$PGBIN/dropdb" -h localhost -p "$PORT" -U "$USER" --if-exists "$DB"
+          "$PGBIN/createdb" -h localhost -p "$PORT" -U "$USER" "$DB"
+          echo "recreated $DB (jobhunt_dev untouched)" ;;
+  nuke)   "$PGBIN/pg_ctl" -D "$PGDATA" stop 2>/dev/null || true; rm -rf "$PGDATA"; start ;;
   status) "$PGBIN/pg_ctl" -D "$PGDATA" status ;;
-  *)      echo "usage: $0 {up|down|reset|status}" >&2; exit 1 ;;
+  *)      echo "usage: $0 {up|down|reset|nuke|status}" >&2; exit 1 ;;
 esac

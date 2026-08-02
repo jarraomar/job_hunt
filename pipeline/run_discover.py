@@ -114,7 +114,13 @@ async def _consume(
                 job.company_name,
                 ats_type=raw.source if raw.source in _ATS_SOURCES else None,
             )
-            _, is_new = await upsert_job(conn, job, company_id, filter_reason=verdict.reason)
+            _, is_new = await upsert_job(
+                conn,
+                job,
+                company_id,
+                filter_reason=verdict.reason,
+                location_class=verdict.location_class,
+            )
 
             counters["seen"] += 1
             counters["new"] += int(is_new)

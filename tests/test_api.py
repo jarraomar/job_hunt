@@ -18,10 +18,22 @@ async def client(db, migrated_db, monkeypatch):
     await close_pool()
 
 
-async def test_root_responds(client):
+async def test_root_serves_the_queue(client):
+    """`/` is the queue from Phase 3 onward, not the JSON service stub.
+
+    web.register() is mounted last so the API routes above it keep their paths
+    and only "/" changes hands.
+    """
     response = await client.get("/")
     assert response.status_code == 200
-    assert response.json()["service"] == "job_hunt"
+    assert "text/html" in response.headers["content-type"]
+    assert "job_hunt" in response.text
+
+
+async def test_the_api_routes_still_answer_after_the_ui_is_mounted(client):
+    # Mount order is load-bearing: a catch-all would shadow these.
+    assert (await client.get("/api/health")).status_code in (200, 503)
+    assert (await client.get("/api/cron/discover")).status_code == 401
 
 
 async def test_health_reports_live_job_count(client, db):

@@ -69,14 +69,15 @@ git add -A && git commit -m "feat: phase 1 discovery pipeline"
 gh repo create job_hunt --private --source=. --push
 ```
 
-**Private, not public.** `profile/` is gitignored, but the repo still describes
-your job search in detail.
+**Private, not public.** The repo describes your job search in detail even with
+personal data removed.
 
-Confirm `Resume.pdf` and `Personalized Cover Letter.docx` are not staged — they
-are in `.gitignore`, but check once:
+Personal documents now live outside the repo (`~/.local/share/jobhunt/profile/`)
+rather than relying on `.gitignore`, so there is nothing to accidentally stage.
+Check once anyway:
 
 ```bash
-git ls-files | grep -iE "resume|cover letter" || echo "clean"
+git ls-files | grep -iE "resume|cover letter|identity" || echo "clean"
 ```
 
 ### Step 2 — Command-line tools
@@ -94,9 +95,25 @@ vercel login
 vercel link              # prompts: create a new project → name it job_hunt
 ```
 
-Answer **N** to "Want to modify these settings?" — the Python runtime resolves
-the FastAPI app on its own and there is no build step, since Tailwind CSS is
-built on your Mac and committed to `public/`.
+Answer **N** to "Want to modify these settings?" — `[tool.vercel]` in
+`pyproject.toml` carries both the entrypoint and the build command, so dashboard
+settings would only be a second place for them to drift.
+
+There **is** a build step, but no JavaScript one:
+
+```toml
+[tool.vercel]
+entrypoint = "api.index:app"
+
+[tool.vercel.scripts]
+build = "python scripts/vendor_model.py"
+```
+
+It runs after dependencies install and vendors the 65 MB ONNX embedding model
+into the bundle; without it every cold start would re-download into an ephemeral
+`/tmp`. Tailwind is built on your Mac and `web/static/app.css` is committed —
+that is what keeps the deployment one Python function instead of two runtimes.
+CI fails if the committed CSS is stale.
 
 **Do not run `vercel git connect`.** Deploys go through GitHub Actions using a
 token, so the project never needs Vercel's GitHub App installed on the repo:
@@ -254,23 +271,48 @@ done
 # generates e.g. 8Kq2mZvR7nJx4TbW1yLdF6sHgP0aQeC3uInO5rVtXkY
 ```
 
-### A trap: do not add a `.vercelignore`
+### A trap: **nothing reliably keeps a file out of the upload**
 
-With `vercel deploy --prebuilt`, a `.vercelignore` file makes the deploy fail
-with a misleading error:
+This section previously recommended `excludeFiles`. That advice was wrong, and
+the correction matters more than the original trap.
 
+**Measured on 2026-08-01.** Vercel's build writes an upload manifest to
+`.vercel/output/functions/python.func/.vc-config.json` under `filePathMap`.
+Inspecting it is the only way to know what actually ships. It contained **1,397
+files**, including `Resume.pdf`, all of `profile/`, and `.env.local` — despite
+`vercel.json` listing `profile/**` and `*.pdf` under `excludeFiles`.
+
+Two mechanisms were tested and neither worked:
+
+| Mechanism | Result |
+|---|---|
+| `excludeFiles` under `functions` | **Ignored.** `maxDuration` from the *same config block* was applied, so the key matched — the exclusion simply had no effect on this bundling path. |
+| `.vercelignore` | **No effect.** Manifest unchanged at 1,398 files. It also breaks `--prebuilt` deploys with a misleading `ENOENT` naming a file that plainly exists, walking to a different file on each retry. |
+
+Phase 0 confirmed the consequence in production: a deployed run crawled board
+tokens that existed only in the local `profile/targets.yaml`.
+
+**The only mechanism that works is keeping the file outside the project
+directory.** Personal data now lives in `~/.local/share/jobhunt/profile/`, which
+is the compiled-in default for `JOBHUNT_PROFILE_DIR`, and its contents reach
+production as `PROFILE_JSON` instead. A test asserts the default never points
+back inside the repo.
+
+`excludeFiles` is still worth setting — it governs the 500 MB *function bundle*
+limit, which is a real constraint — but do not treat it as a privacy control.
+
+**Check the manifest before any deploy that touches file layout:**
+
+```bash
+vercel build --prod
+python3 -c "
+import json
+m = json.load(open('.vercel/output/functions/python.func/.vc-config.json'))['filePathMap']
+print(f'{len(m)} files')
+for p in ['profile/', 'Resume', 'seed/', '.env']:
+    hits = [k for k in m if k.startswith(p)]
+    print(f'  {p:12s} {len(hits)} {\"LEAK\" if hits else \"clean\"}')"
 ```
-Error: ENOENT: no such file or directory, lstat '/vercel/path0/docs/environment.md'
-```
-
-The named file exists. What happens is that `.vercelignore` excludes it from
-the upload while the build manifest still references it, so the remote side
-stats a path that was never sent. The error walks to a different file on each
-retry, which makes it look like a flaky cache problem rather than a config one.
-
-Use `excludeFiles` under `functions` in `vercel.json` instead — it governs what
-lands in the function bundle, which is the thing that actually matters for the
-500 MB limit, and it does not interfere with the upload.
 
 ### Step 6 — Verify
 
@@ -305,8 +347,28 @@ inspecting what is deployed.
 
 ## Local development
 
-Only `DATABASE_URL` is needed to run Phase 1, and it points at the local
-cluster, never at Neon:
+One script runs everything. It starts the database, applies migrations, builds
+the CSS, and serves the UI with auto-reload:
+
+```bash
+./scripts/dev.sh              # http://localhost:8000
+./scripts/dev.sh discover     # one crawl, then exit
+./scripts/dev.sh score        # one scoring pass, then exit
+```
+
+| Route | What it shows |
+|---|---|
+| <http://localhost:8000/> | Ranked queue — score, salary, age, rationale, Sharia badge |
+| <http://localhost:8000/tracker> | Funnel and weekly conversion |
+| <http://localhost:8000/settings> | Answer bank, Sharia overrides, run log, today's model spend |
+
+`--reload` watches `web/`, `pipeline/` and `api/`, so template and code edits
+appear on refresh. **Tailwind is not watched** — after changing classes in a
+template, re-run `./scripts/build_css.sh` (or just restart the script).
+
+Nothing but `DATABASE_URL` is required, and it points at the local cluster,
+never at Neon. `dev.sh` sets it for you; set it yourself only for one-off
+commands:
 
 ```bash
 export DATABASE_URL="postgresql://jobhunt@localhost:5433/jobhunt_dev"
@@ -316,23 +378,101 @@ Put it in your shell profile, or use [`direnv`](https://direnv.net) with a
 `.envrc` scoped to this directory. `.envrc` is not gitignored by default — add
 it if you go that route.
 
-`JOBHUNT_TEST_DATABASE_URL` is read only by the test suite and defaults to the
-local cluster. **Never point it at Neon** — the tests `TRUNCATE`.
+`JOBHUNT_TEST_DATABASE_URL` is read only by the test suite and defaults to
+`jobhunt_test` on the same cluster. **Never point it at Neon** — the tests
+`TRUNCATE`.
+
+### Running against real credentials without copying them
+
+`vercel env run` injects the deployed values for one command, so a key never
+lands in a file or in shell history:
+
+```bash
+vercel env run -e production -- ./scripts/dev.sh score
+```
+
+Note that `vercel env pull` writes `DATABASE_URL="[SENSITIVE]"` — literally
+that string, redacted. The pulled file cannot be sourced to reach Neon; use
+`env run` instead. Sourcing it also sets `VERCEL=1`, which makes the profile
+loader refuse to read from disk, exactly as it does in production.
+
+### Two local databases
+
+| Database | Used by | Reset with |
+|---|---|---|
+| `jobhunt_dev` | `dev.sh`, the report scripts | recreate by hand |
+| `jobhunt_test` | the test suite (`TRUNCATE`s constantly) | `./scripts/dev_db.sh reset` |
+
+`dev_db.sh reset` drops **only** the test database. `dev_db.sh nuke` destroys
+the whole cluster and takes `jobhunt_dev` with it — that distinction exists
+because the old `reset` twice wiped the corpus as collateral damage.
 
 ### What the code reads today
 
-Eight variables. Only the first has no default.
+Only `DATABASE_URL` has no default.
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `DATABASE_URL` | **none — required** | Postgres connection string |
 | `JOBHUNT_SALARY_FLOOR` | `125000` | Jobs whose *known* ceiling is below this are filtered out. Unknown salary always passes. |
-| `JOBHUNT_HOME_CITY` | `San Leandro` | Proximity ranking (Phase 2) |
-| `JOBHUNT_HOME_STATE` | `CA` | Proximity ranking (Phase 2) |
-| `JOBHUNT_RUN_BUDGET_SECONDS` | `240` | Seconds before a run returns early with `budget_hit=true`. **Coupled to `maxDuration` in `vercel.json`** — Vercel hard-kills at the ceiling and logs nothing for a killed invocation, so a budget above it can never fire. Hobby caps `maxDuration` at 300; on Pro raise both to 800/600 together. A test asserts the two stay in sync. |
+| `JOBHUNT_HOME_CITY` | `San Leandro` | Proximity ranking |
+| `JOBHUNT_HOME_STATE` | `CA` | Proximity ranking |
+| `JOBHUNT_RUN_BUDGET_SECONDS` | `600` | Seconds before a run returns early with `budget_hit=true`. **Coupled to `maxDuration` in `vercel.json`** — Vercel hard-kills at the ceiling and logs nothing for a killed invocation, so a budget above it can never fire. Currently 800/600 on Pro. A test asserts the two stay in sync. |
 | `JOBHUNT_USER_AGENT` | see `config.py` | Sent on every outbound request. Keep a working contact address in it — an operator who can reach a human is less likely to reach for an IP block. |
-| `JOBHUNT_PROFILE_DIR` | `./profile` | Where `targets.yaml` and personal data live |
+| `JOBHUNT_PROFILE_DIR` | `~/.local/share/jobhunt/profile` | Résumé, competency bullets, identity, `targets.yaml`. **Outside the repo deliberately** — see the upload-manifest trap above. |
 | `JOBHUNT_MIGRATIONS_DIR` | `./migrations` | Rarely overridden |
+| `JOBHUNT_MODEL_CACHE` | `./model_cache` | Vendored ONNX embedding model. Written by `scripts/vendor_model.py` at build time; gitignored. |
+| `DAILY_LLM_CAP_USD` | `1.50` | Hard daily ceiling, enforced against the `llm_spend` table rather than an in-process counter — a serverless tally resets on every cold start. |
+| `JOBHUNT_DAILY_JUDGE_LIMIT` | `50` | Jobs sent to Haiku per run. Judging all ~800 daily would cost ~$4/day. |
+| `JOBHUNT_JUDGE_PER_COMPANY_CAP` | `3` | Max judged per employer. One company supplied 23% of live postings and 17 of the top 25 by score; without this the budget goes to near-duplicate roles at one employer. |
+| `JOBHUNT_TARGETS_JSON` | unset | Board tokens as JSON. Set in Vercel; on disk locally. |
+| `PROFILE_JSON` | unset | The whole profile as JSON. Set in Vercel; on disk locally. |
+| `ANTHROPIC_API_KEY` | unset | Optional, unlike `DATABASE_URL`: discovery is most of the work and needs no model access, so a missing key must not stop a crawl. `pipeline/llm.py` raises at the call site instead. |
+
+---
+
+## Access control — read before deploying the UI
+
+**The application has no login, and none is planned.** Vercel Authentication is
+the only gate. Adding a second password would mean storing a hash, handling
+sessions, and getting cookie flags right, all to protect a single-user app that
+already sits behind SSO.
+
+That makes one dashboard setting load-bearing:
+
+🖱 **Project → Settings → Deployment Protection → Vercel Authentication →
+Standard Protection** (all deployments, production domain included).
+
+**Turning this off publishes your home city, phone number, work-authorization
+answers, salary floor, and every job you are considering** to anyone who finds
+the hostname. It is the kind of switch that gets flipped during unrelated
+debugging — "just checking whether protection is what's breaking this" — and
+never flipped back.
+
+Production-domain protection is a **Pro** feature. On Hobby the production URL
+is public and this design does not hold.
+
+Verify rather than assume:
+
+```bash
+# From a machine that is not logged in, or a private window:
+curl -s -o /dev/null -w '%{http_code}\n' https://<your-production-url>/
+# 401 or 307  -> protected, correct
+# 200         -> PUBLIC. Stop and fix before doing anything else.
+```
+
+**Crons are unaffected.** Vercel's scheduler invokes functions internally and
+bypasses Deployment Protection, so discovery and scoring keep running behind
+it. Confirm rather than assume — the failure is silent, the UI keeps working
+while the pipeline quietly stops:
+
+```bash
+vercel crons ls
+vercel logs --since 20m | grep -iE "discover|score"
+```
+
+If protection ever does block them, the documented remedy is Protection Bypass
+for Automation (Pro).
 
 ---
 
@@ -397,13 +537,36 @@ the authenticated UI.
 
 ### PROFILE_JSON — Phase 2
 
-`profile/` is gitignored, so it is absent from a Vercel build. The data is small
-and structured, so it ships as one JSON variable (Vercel's cap is 64 KB per
-deployment). `scripts/sync_profile.py` will serialize and push it:
+**Corrected.** This previously said "`profile/` is gitignored, so it is absent
+from a Vercel build." Gitignoring has no bearing on what Vercel uploads — the
+directory shipped anyway, which is why it now lives outside the repo entirely
+(see the upload-manifest trap above).
+
+The profile reaches production as one JSON variable instead. About 5 KB against
+Vercel's 64 KB per-deployment cap. Push it to **both** scopes — production reads
+the Neon production branch, preview reads staging:
 
 ```bash
-python scripts/sync_profile.py | vercel env add PROFILE_JSON production
+./venv/bin/python scripts/sync_profile.py | vercel env add PROFILE_JSON production
+./venv/bin/python scripts/sync_profile.py | vercel env add PROFILE_JSON preview
 ```
+
+Re-run both after editing the résumé or the competency bullets; the deployed
+copy does not track the files.
+
+**This is your identity going into Vercel's environment store** — name, email,
+phone, city, and work-authorization answers. That is deliberate and it is the
+only way the deployed judge sees your résumé, but it is worth knowing rather
+than discovering.
+
+Two consequences of the judge's prompt design:
+
+- The résumé is inside a **cached prompt prefix**, so it is sent once per
+  five-minute window rather than on every call. Growing it past 4,096 tokens is
+  what makes caching engage at all — see `pipeline/judge.py`.
+- `scripts/measure_prefix.py` reports whether the prefix still clears that
+  threshold. Run it after any résumé edit; below the line, caching silently
+  no-ops and every judgement pays roughly 5× more.
 
 ### Adzuna and USAJobs — optional, skip for now
 
@@ -435,7 +598,10 @@ vercel env add USAJOBS_USER_AGENT production  # must be the registered email
 | `CRON_SECRET` | Vercel prod + preview | self-generated, ≥32 chars | Phase 0 |
 | `ANTHROPIC_API_KEY` | Vercel prod + preview | `sk-ant-api03-…`, distinct per env | Phase 2 |
 | `DAILY_LLM_CAP_USD` | Vercel prod + preview | `1.50` | Phase 2 |
-| `PROFILE_JSON` | Vercel prod + preview | `scripts/sync_profile.py` | Phase 2 |
+| `PROFILE_JSON` | Vercel prod + preview | `scripts/sync_profile.py`, ~5 KB | Phase 2 |
+| `JOBHUNT_TARGETS_JSON` | Vercel prod + preview | board tokens as JSON | Phase 1 |
+| `JOBHUNT_DAILY_JUDGE_LIMIT` | optional | `50` — ~$0.13/day | Phase 2 |
+| `JOBHUNT_JUDGE_PER_COMPANY_CAP` | optional | `3` | Phase 2 |
 | `BLOB_READ_WRITE_TOKEN` | Vercel, auto | injected by connecting the Blob store | Phase 4 |
 | `SMTP_HOST` / `SMTP_PORT` | Vercel prod | `smtp.gmail.com` / `587` | Phase 5 |
 | `SMTP_USERNAME` / `SMTP_PASSWORD` | Vercel prod | `jarraomar4@gmail.com` / 16-char App Password | Phase 5 |

@@ -32,3 +32,6 @@ __pycache__/
 .mypy_cache/
 .vercel
 .env*
+# Embedding model, vendored at build time by scripts/vendor_model.py.
+# ~65 MB of ONNX weights — regenerated on every deploy, never committed.
+model_cache/
