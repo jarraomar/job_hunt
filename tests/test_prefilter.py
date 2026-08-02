@@ -253,3 +253,52 @@ def test_adjacent_engineering_families_pass(title):
 def test_customer_facing_engineering_titles_are_still_rejected(title):
     # "Engineer" in the title does not make it an engineering job.
     assert not prefilter(make_job(title=title), SETTINGS).passed, title
+
+
+# --- geography ---------------------------------------------------------------
+
+
+def test_a_bay_area_hybrid_role_passes():
+    job = make_job(location="San Francisco, CA", remote_type="hybrid")
+    assert prefilter(job, SETTINGS).passed
+
+
+def test_a_hybrid_role_in_another_metro_is_rejected():
+    result = prefilter(make_job(location="New York, NY", remote_type="hybrid"), SETTINGS)
+    assert not result.passed
+    assert result.reason == "location_outside_area"
+
+
+def test_a_remote_role_scoped_outside_the_country_is_rejected():
+    result = prefilter(make_job(location="Remote Canada", remote_type="remote"), SETTINGS)
+    assert not result.passed
+    assert result.reason == "remote_outside_us"
+
+
+def test_a_us_remote_role_passes_from_any_metro():
+    # Jarra works remotely for US employers regardless of where they sit.
+    assert prefilter(make_job(location="Remote (US)", remote_type="remote"), SETTINGS).passed
+
+
+def test_a_role_with_no_stated_location_passes():
+    """Fifty live postings say only "N/A". Rejecting on absence would delete
+    every Stripe role in the corpus."""
+    assert prefilter(make_job(location="N/A", remote_type="onsite"), SETTINGS).passed
+
+
+def test_the_title_rule_wins_over_the_location_rule():
+    """A recruiter role in London is rejected for being a recruiter role.
+
+    Reporting the location first would make the intake breakdown claim the
+    geography screen is doing work the title screen already did.
+    """
+    result = prefilter(
+        make_job(title="Technical Recruiter", location="London, UK", remote_type="onsite"),
+        SETTINGS,
+    )
+    assert result.reason == "title_not_target"
+
+
+def test_every_result_carries_a_location_class_including_rejections():
+    rejected = prefilter(make_job(title="Sales Manager", location="Oakland, CA"), SETTINGS)
+    assert rejected.location_class == "local"

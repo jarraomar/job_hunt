@@ -13,14 +13,20 @@ Two rules here are load-bearing and both cut against intuition:
   a security clearance" are eligibility matches, not disqualifiers. There is
   deliberately no rule keyed on those words -- this docstring and the regression
   tests exist so nobody adds one.
+
+Geography is the one rule here that rejects on inference rather than on a stated
+fact, and it lives in filters/location.py with its own corpus report. It is
+applied last so a job rejected for its title records that instead.
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from functools import partial
 
 from pipeline.config import Settings
+from pipeline.filters.location import UNKNOWN, classify_location, location_verdict
 from pipeline.models import Job
 
 TARGET_TITLE_PATTERNS: list[re.Pattern[str]] = [
@@ -76,6 +82,10 @@ NON_ENGINEERING_RE = re.compile(
 class FilterResult:
     passed: bool
     reason: str | None = None
+    # Carried out of the filter rather than recomputed by the caller: the same
+    # classification decides both the verdict and the badge the queue shows,
+    # and deriving it twice invites the two to disagree.
+    location_class: str = UNKNOWN
 
 
 def _role_head(title: str) -> str:
@@ -93,25 +103,37 @@ def prefilter(job: Job, settings: Settings) -> FilterResult:
     title = job.title
     head = _role_head(title)
 
+    # Classified up front so every FilterResult carries a badge, including the
+    # rejected ones -- the settings breakdown reports on jobs this gate threw
+    # away, and it cannot do that if the class only exists on the pass path.
+    location_class = classify_location(location=job.location, description=job.description)
+    keep = partial(FilterResult, location_class=location_class)
+
     # Title checks run before salary so a rejected job records *why* it was
     # wrong rather than the first rule that happened to fire.
     if NON_ENGINEERING_RE.search(head):
-        return FilterResult(False, "title_not_target")
+        return keep(False, "title_not_target")
 
     if MANAGEMENT_RE.search(head):
-        return FilterResult(False, "management_role")
+        return keep(False, "management_role")
 
     if SENIORITY_EXCLUDE_RE.search(head):
-        return FilterResult(False, "seniority_mismatch")
+        return keep(False, "seniority_mismatch")
 
     if not any(p.search(title) for p in TARGET_TITLE_PATTERNS):
-        return FilterResult(False, "title_not_target")
+        return keep(False, "title_not_target")
 
     # Unknown salary passes: most ATSes do not publish it, and rejecting on
     # unknown would discard the majority of real intake.
     if job.salary_source != "none":
         ceiling = job.salary_max if job.salary_max is not None else job.salary_min
         if ceiling is not None and ceiling < settings.salary_floor:
-            return FilterResult(False, "salary_below_floor")
+            return keep(False, "salary_below_floor")
 
-    return FilterResult(True, None)
+    # Last, and the only rule that rejects on inference rather than on a stated
+    # fact. A job rejected here was otherwise a match, so the reason it records
+    # is the one worth reading.
+    if reason := location_verdict(location_class, job.remote_type):
+        return keep(False, reason)
+
+    return keep(True, None)

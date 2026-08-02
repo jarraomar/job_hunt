@@ -1,0 +1,712 @@
+# Place vocabulary for the location screen (pipeline/filters/location.py).
+#
+# Data rather than code so the lists can be corrected without touching logic --
+# the same reason blocklist.yaml exists. Every term is matched on whole-word
+# boundaries against a lowercased place string.
+#
+# A term appearing in the WRONG list here silently deletes jobs. Before adding
+# one, run: ./venv/bin/python scripts/location_report.py --sample <term>
+
+# Commutable from San Leandro, and unambiguous: no well-known city elsewhere
+# shares the name. A hybrid or onsite role must match one of these or it is
+# rejected, so a missing city here is a missing job.
+bay_area:
+  - san leandro
+  - oakland
+  - san francisco
+  - sf
+  - sfo          # airport code, used as shorthand on Hacker News
+  - sjc
+  - south san francisco
+  - south sf
+  - berkeley
+  - emeryville
+  - alameda
+  - el cerrito
+  - hayward
+  - san lorenzo
+  - castro valley
+  - fremont
+  - milpitas
+  - san jose
+  - santa clara
+  - sunnyvale
+  - mountain view
+  - palo alto
+  - east palo alto
+  - menlo park
+  - redwood city
+  - san carlos
+  - san mateo
+  - foster city
+  - burlingame
+  - millbrae
+  - daly city
+  - san bruno
+  - pleasanton
+  - livermore
+  - walnut creek
+  - pleasant hill
+  - orinda
+  - san ramon
+  - bay area
+  - sf bay area
+  - san francisco bay area
+  - east bay
+  - south bay
+  - north bay
+  - peninsula
+  - silicon valley
+
+# Bay Area cities whose name is more famous somewhere else. These count as
+# local ONLY alongside a California signal ("Dublin, CA") or another Bay Area
+# city in the same posting.
+#
+# Bare "Dublin" in a job posting means Ireland far more often than it means
+# Alameda County, and treating it as local sent three Dublin-and-London roles
+# to the queue as though they were a twenty-minute drive. Unqualified, they
+# fall through to `unknown` and pass without claiming to be local -- the safe
+# direction, since the cost is a badge rather than a deleted job.
+bay_area_ambiguous:
+  - dublin      # Ireland, Ohio, Georgia
+  - brisbane    # Australia
+  - newark      # New Jersey, Delaware
+  - richmond    # Virginia, British Columbia
+  - concord     # New Hampshire, Massachusetts, North Carolina
+  - albany      # New York
+  - lafayette   # Louisiana, Indiana
+  - danville    # Virginia, Illinois
+  - belmont     # Massachusetts, North Carolina
+  - union city  # New Jersey, Georgia
+  - piedmont    # South Carolina
+  - victoria    # British Columbia, Australia
+
+# Scoped to the United States without naming a city. A remote role matching one
+# of these is in scope; a hybrid or onsite one is not.
+us_wide:
+  - united states
+  - usa
+  - us
+  - u.s.
+  - u.s
+  - u.s.a.
+  - america
+  - north america
+  - americas
+  - nationwide
+  - anywhere in the us
+  - anywhere in the united states
+  - remote us
+  - us remote
+  - continental us
+  - lower 48
+  - conus
+
+# Unrestricted. Includes the US by definition, so a remote role matching one is
+# in scope.
+anywhere:
+  - anywhere
+  - worldwide
+  - global
+  - globally
+  - fully distributed
+  - distributed
+
+# US states, by name and by postal code. Presence means "in the US", not "in
+# the Bay Area" -- California appears here for exactly that reason: a role in
+# Los Angeles is a US role Jarra cannot commute to.
+us_states:
+  - alabama
+  - alaska
+  - arizona
+  - arkansas
+  - california
+  - colorado
+  - connecticut
+  - delaware
+  - florida
+  - georgia
+  - hawaii
+  - idaho
+  - illinois
+  - indiana
+  - iowa
+  - kansas
+  - kentucky
+  - louisiana
+  - maine
+  - maryland
+  - massachusetts
+  - michigan
+  - minnesota
+  - mississippi
+  - missouri
+  - montana
+  - nebraska
+  - nevada
+  - new hampshire
+  - new jersey
+  - new mexico
+  - new york
+  - north carolina
+  - north dakota
+  - ohio
+  - oklahoma
+  - oregon
+  - pennsylvania
+  - rhode island
+  - south carolina
+  - south dakota
+  - tennessee
+  - texas
+  - utah
+  - vermont
+  - virginia
+  - washington
+  - west virginia
+  - wisconsin
+  - wyoming
+  - district of columbia
+  - washington dc
+  - washington d.c.
+
+# Two-letter postal codes. Matched only in a trailing "City, XX" position, never
+# as a bare token: "OR" and "IN" and "ME" and "OK" are ordinary English words,
+# and "CA" as a free token is as likely to mean Canada as California.
+us_state_codes:
+  - al
+  - ak
+  - az
+  - ar
+  - ca
+  - co
+  - ct
+  - de
+  - fl
+  - ga
+  - hi
+  - id
+  - il
+  - in
+  - ia
+  - ks
+  - ky
+  - la
+  - me
+  - md
+  - ma
+  - mi
+  - mn
+  - ms
+  - mo
+  - mt
+  - ne
+  - nv
+  - nh
+  - nj
+  - nm
+  - ny
+  - nc
+  - nd
+  - oh
+  - ok
+  - or
+  - pa
+  - ri
+  - sc
+  - sd
+  - tn
+  - tx
+  - ut
+  - vt
+  - va
+  - wa
+  - wv
+  - wi
+  - wy
+  - dc
+
+# US metros outside commuting range, named without a state. "Seattle" alone is
+# unambiguous in a job posting; leaving it out would leave the role classified
+# unknown and let it through, which is the case Jarra explicitly asked to stop.
+us_cities:
+  - new york
+  - new york city
+  - nyc
+  - brooklyn
+  - manhattan
+  - queens
+  - jersey city
+  - hoboken
+  - seattle
+  - bellevue
+  - redmond
+  - kirkland
+  - tacoma
+  - portland
+  - boston
+  - cambridge
+  - somerville
+  - waltham
+  - burlington ma
+  - austin
+  - dallas
+  - fort worth
+  - houston
+  - san antonio
+  - denver
+  - boulder
+  - colorado springs
+  - chicago
+  - evanston
+  - atlanta
+  - miami
+  - tampa
+  - orlando
+  - philadelphia
+  - pittsburgh
+  - baltimore
+  - arlington
+  - alexandria
+  - reston
+  - mclean
+  - bethesda
+  - raleigh
+  - durham
+  - charlotte
+  - nashville
+  - memphis
+  - detroit
+  - ann arbor
+  - minneapolis
+  - saint paul
+  - st. paul
+  - madison
+  - milwaukee
+  - columbus
+  - cleveland
+  - cincinnati
+  - indianapolis
+  - kansas city
+  - st. louis
+  - saint louis
+  - omaha
+  - salt lake city
+  - provo
+  - lehi
+  - phoenix
+  - scottsdale
+  - tempe
+  - tucson
+  - mesa
+  - las vegas
+  - reno
+  - albuquerque
+  - oklahoma city
+  - tulsa
+  - new orleans
+  - birmingham
+  - charleston
+  - richmond va
+  - norfolk
+  - hartford
+  - providence
+  - princeton
+  - stamford
+  - white plains
+  - honolulu
+  - anchorage
+  # California, outside commuting range.
+  - los angeles
+  - santa monica
+  - culver city
+  - pasadena
+  - burbank
+  - long beach
+  - irvine
+  - costa mesa
+  - anaheim
+  - san diego
+  - la jolla
+  - carlsbad
+  - sacramento
+  - davis
+  - fresno
+  - bakersfield
+  - santa barbara
+  - san luis obispo
+  - santa cruz
+  - monterey
+
+# Countries, territories and multi-country regions. These QUALIFY the place
+# before them -- "San José, Costa Rica" is one place, not two -- which is why
+# they are kept apart from the city list below. A city never qualifies another
+# city: reading "London" as a qualifier merged "SF, London, Metro DC" into a
+# single London posting and rejected a role with a San Francisco office.
+non_us_countries:
+  # Countries and territories
+  - canada
+  - mexico
+  - united kingdom
+  - uk
+  - england
+  - scotland
+  - wales
+  - northern ireland
+  - ireland
+  - france
+  - germany
+  - spain
+  - portugal
+  - italy
+  - netherlands
+  - the netherlands
+  - belgium
+  - luxembourg
+  - switzerland
+  - austria
+  - poland
+  - czechia
+  - czech republic
+  - slovakia
+  - hungary
+  - romania
+  - bulgaria
+  - serbia
+  - croatia
+  - slovenia
+  - greece
+  - cyprus
+  - malta
+  - sweden
+  - norway
+  - denmark
+  - finland
+  - iceland
+  - estonia
+  - latvia
+  - lithuania
+  - ukraine
+  - moldova
+  - belarus
+  - russia
+  - turkey
+  - israel
+  - palestine
+  - lebanon
+  - jordan
+  - saudi arabia
+  - qatar
+  - kuwait
+  - bahrain
+  - oman
+  - uae
+  - united arab emirates
+  - egypt
+  - morocco
+  - tunisia
+  - algeria
+  - nigeria
+  - ghana
+  - kenya
+  - uganda
+  - tanzania
+  - rwanda
+  - ethiopia
+  - south africa
+  - india
+  - pakistan
+  - bangladesh
+  - sri lanka
+  - nepal
+  - china
+  - hong kong
+  - macau
+  - taiwan
+  - japan
+  - south korea
+  - korea
+  - vietnam
+  - thailand
+  - cambodia
+  - laos
+  - myanmar
+  - malaysia
+  - singapore
+  - indonesia
+  - philippines
+  - australia
+  - new zealand
+  - brazil
+  - argentina
+  - chile
+  - colombia
+  - peru
+  - ecuador
+  - uruguay
+  - paraguay
+  - bolivia
+  - venezuela
+  - costa rica
+  - panama
+  - guatemala
+  - honduras
+  - el salvador
+  - nicaragua
+  - dominican republic
+  - jamaica
+  - trinidad
+  - cuba
+  # Regions
+  - emea
+  - apac
+  - latam
+  - latin america
+  - south america
+  - central america
+  - europe
+  - european union
+  - eu
+  - eea
+  - asia
+  - asia pacific
+  - africa
+  - middle east
+  - oceania
+  - nordics
+  - benelux
+  - dach
+  - iberia
+  - balkans
+  - caribbean
+  - british columbia
+  - ontario canada
+  - alberta
+  - quebec
+  - québec
+
+# Cities outside the United States that appear on engineering job boards.
+# Matched, but never treated as a qualifier.
+non_us_cities:
+  - london
+  - manchester
+  - edinburgh
+  - glasgow
+  - bristol
+  - cambridge uk
+  - oxford
+  - dublin ireland
+  - cork
+  - belfast
+  - paris
+  - lyon
+  - marseille
+  - toulouse
+  - berlin
+  - munich
+  - münchen
+  - hamburg
+  - frankfurt
+  - cologne
+  - köln
+  - stuttgart
+  - düsseldorf
+  - dusseldorf
+  - amsterdam
+  - rotterdam
+  - utrecht
+  - eindhoven
+  - brussels
+  - antwerp
+  - zurich
+  - zürich
+  - geneva
+  - basel
+  - zug
+  - lausanne
+  - vienna
+  - wien
+  - madrid
+  - barcelona
+  - valencia
+  - seville
+  - lisbon
+  - lisboa
+  - porto
+  - milan
+  - milano
+  - rome
+  - roma
+  - turin
+  - bologna
+  - warsaw
+  - warszawa
+  - krakow
+  - kraków
+  - wroclaw
+  - gdansk
+  - poznan
+  - prague
+  - praha
+  - brno
+  - bratislava
+  - budapest
+  - bucharest
+  - bucuresti
+  - cluj
+  - sofia
+  - belgrade
+  - novi sad
+  - zagreb
+  - ljubljana
+  - athens
+  - thessaloniki
+  - stockholm
+  - gothenburg
+  - malmo
+  - oslo
+  - bergen
+  - copenhagen
+  - aarhus
+  - helsinki
+  - espoo
+  - reykjavik
+  - tallinn
+  - riga
+  - vilnius
+  - kyiv
+  - kiev
+  - lviv
+  - odesa
+  - minsk
+  - moscow
+  - saint petersburg
+  - istanbul
+  - ankara
+  - izmir
+  - tel aviv
+  - jerusalem
+  - haifa
+  - herzliya
+  - dubai
+  - abu dhabi
+  - doha
+  - riyadh
+  - cairo
+  - casablanca
+  - nairobi
+  - lagos
+  - abuja
+  - accra
+  - kampala
+  - kigali
+  - johannesburg
+  - cape town
+  - durban
+  - pretoria
+  - bangalore
+  - bengaluru
+  - hyderabad
+  - mumbai
+  - bombay
+  - new delhi
+  - delhi
+  - gurgaon
+  - gurugram
+  - noida
+  - pune
+  - chennai
+  - kolkata
+  - ahmedabad
+  - jaipur
+  - kochi
+  - karachi
+  - lahore
+  - islamabad
+  - dhaka
+  - colombo
+  - kathmandu
+  - beijing
+  - shanghai
+  - shenzhen
+  - guangzhou
+  - hangzhou
+  - chengdu
+  - taipei
+  - tokyo
+  - osaka
+  - kyoto
+  - yokohama
+  - seoul
+  - busan
+  - hanoi
+  - ho chi minh
+  - saigon
+  - da nang
+  - bangkok
+  - chiang mai
+  - phnom penh
+  - kuala lumpur
+  - jakarta
+  - bandung
+  - manila
+  - cebu
+  - sydney
+  - melbourne
+  - brisbane australia
+  - perth
+  - adelaide
+  - canberra
+  - auckland
+  - wellington
+  - christchurch
+  - toronto
+  - vancouver
+  - montreal
+  - montréal
+  - ottawa
+  - calgary
+  - edmonton
+  - winnipeg
+  - waterloo
+  - kitchener
+  - halifax
+  - victoria bc
+  - mexico city
+  - guadalajara
+  - monterrey
+  - queretaro
+  - tijuana
+  - sao paulo
+  - são paulo
+  - rio de janeiro
+  - belo horizonte
+  - brasilia
+  - curitiba
+  - porto alegre
+  - florianopolis
+  - recife
+  - buenos aires
+  - cordoba
+  - rosario
+  - santiago
+  - valparaiso
+  - bogota
+  - bogotá
+  - medellin
+  - medellín
+  - cali
+  - lima
+  - quito
+  - guayaquil
+  - montevideo
+  - asuncion
+  - la paz
+  - caracas
+  - san jose costa rica
+  - panama city
+  - guatemala city
+  - san salvador
+  - santo domingo
+  - kingston
+  - havana
