@@ -1,0 +1,101 @@
+# Tier 1 of the Sharia business-activity screen (spec section 9).
+#
+# Business activity only. The DJIM/AAOIFI financial-ratio screens are for
+# equity investing and do not transfer to employment -- applying a debt ratio
+# here would exclude most large employers for no defensible reason.
+#
+# ---------------------------------------------------------------------------
+# WHY THIS IS SPLIT IN TWO
+#
+# The first version matched every term against the company name AND its job
+# text. Run over 197 real companies it excluded 17, of which ~14 were wrong:
+# Anthropic, Ramp, Robinhood, Brex, and a medical practice all vanished,
+# because job descriptions carry benefits boilerplate -- "medical, dental and
+# vision insurance" trips `insurance` for any employer with decent benefits.
+#
+# A job description describes the ROLE, not the business. It is not evidence
+# about business activity and is no longer treated as such.
+#
+#   name_terms        -- matched against the company name only. A company
+#                        called "First National Bank" is a bank; the name is
+#                        reliable evidence in a way the job text is not.
+#   description_terms -- multi-word phrases specific enough that they cannot
+#                        plausibly appear in benefits or perks boilerplate.
+#
+# Everything else goes to Haiku, which costs about $0.0005 per company once and
+# is then cached forever. Tier 1 exists to catch the obvious cases for free,
+# not to be comprehensive.
+# ---------------------------------------------------------------------------
+
+name_terms:
+  interest_finance:
+    - bank
+    - banking
+    - bancorp
+    - lending
+    - lender
+    - mortgage
+    - insurance
+    - reinsurance
+    - assurance
+  alcohol:
+    - brewery
+    - brewing
+    - distillery
+    - winery
+    - vineyards
+    - spirits
+    - liquor
+  gambling:
+    - casino
+    - sportsbook
+    - betting
+    - igaming
+    - lottery
+  adult: []
+  weapons:
+    - munitions
+    - armaments
+  pork: []
+
+description_terms:
+  interest_finance:
+    - payday loan
+    - payday lending
+    - consumer credit reporting
+    - interest-bearing deposits
+  alcohol:
+    - craft brewery
+    - our distillery
+    - wine and spirits brand
+  gambling:
+    - online casino
+    - sports betting
+    - casino games
+    - betting markets
+  adult:
+    - adult entertainment
+    - pornography
+  weapons:
+    - weapons manufacturer
+    - firearms manufacturer
+    - ammunition manufacturer
+  pork:
+    - pork producer
+    - pork processing
+
+# Checked before anything else, against the name. These read as hits above
+# while describing permissible work.
+#
+# A false exclusion silently deletes an employer and nobody finds out -- the
+# expensive direction of error in this screen.
+allowed_overrides:
+  - blood bank
+  - data bank
+  - databank
+  - memory bank
+  - image bank
+  - seed bank
+  - food bank
+  - world bank
+  - bank of america stadium

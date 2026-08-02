@@ -1,0 +1,29 @@
+{
+  "summary": "One-paragraph professional summary. Rewritten per role by Sonnet in Phase 4; every claim must already be true here.",
+  "skills": {
+    "languages": ["Python", "TypeScript", "JavaScript", "C++"],
+    "frontend": ["React", "Next.js", "Tailwind"],
+    "backend": ["FastAPI", "Node.js", "PostgreSQL"],
+    "cloud": ["AWS", "Docker", "GitHub Actions", "Terraform"],
+    "ai": ["LLM integration", "prompt engineering", "RAG"]
+  },
+  "experience": [
+    {
+      "company": "Example Co",
+      "title": "Software Engineer",
+      "start": "2023-06",
+      "end": null,
+      "bullets": [
+        "Shipped X, reducing Y from A to B.",
+        "Built Z used by N customers."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "school": "Example University",
+      "degree": "BS Computer Engineering",
+      "year": "2023"
+    }
+  ]
+}

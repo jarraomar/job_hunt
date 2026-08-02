@@ -1,0 +1,18 @@
+# The pool Sonnet selects four from when filling the cover letter (spec 10.1).
+# Every technology and metric here must be true and evidenced in resume.json —
+# the model may reword and reorder, never invent.
+- label: Full-Stack Development
+  text: >-
+    Built and shipped end-to-end features across React/Next.js frontends and
+    Python/FastAPI backends, owning schema design through deployment.
+- label: AI and Automation
+  text: >-
+    Integrated LLM-backed workflows into production systems, cutting a
+    five-hour manual process to four minutes.
+- label: Measurable Product Impact
+  text: >-
+    Delivered work across 30 client engagements, with scope from prototype to
+    production infrastructure.
+- label: Cloud and DevOps
+  text: >-
+    Deployed and operated services on AWS with Docker and GitHub Actions CI/CD.
