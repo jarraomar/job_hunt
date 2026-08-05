@@ -3,6 +3,10 @@ name: Deploy production
 on:
   push:
     branches: [main]
+  # Re-deploying the current commit needs a trigger of its own. Re-running a
+  # previous run replays *that commit's* workflow file, so a fix to this file
+  # is not picked up by a rerun of the run it was meant to fix.
+  workflow_dispatch:
 
 concurrency:
   group: deploy-production
@@ -50,6 +54,33 @@ jobs:
         run: |
           pip install -e "."
           python scripts/migrate.py
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DIRECT_URL_PRODUCTION }}
+
+      - name: Re-judge stored jobs against the shipped filter rules
+        # The pre-filter runs once, at discovery. A job stored last week keeps
+        # last week's verdict, so shipping a rule change leaves the queue
+        # disagreeing with the code that built it -- and the disagreement is
+        # invisible, because a filtered job looks identical to one that was
+        # never a match.
+        #
+        # Here rather than in a runbook because a rule change ships *with* a
+        # deploy: this is the one moment the two are guaranteed to be out of
+        # step. Idempotent and cheap -- pure regex, no embedding model, and it
+        # writes only the rows whose verdict actually changed, so a deploy that
+        # touches no rules writes nothing.
+        run: |
+          # Outside the checkout: `vercel build` runs next and sweeps the
+          # working directory into the function bundle. A log file written
+          # here would ship to production.
+          log="$RUNNER_TEMP/reclassify.log"
+          python scripts/reclassify.py | tee "$log"
+          {
+            echo '### Re-judged stored jobs'
+            echo '```'
+            cat "$log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
         env:
           DATABASE_URL: ${{ secrets.NEON_DIRECT_URL_PRODUCTION }}
 

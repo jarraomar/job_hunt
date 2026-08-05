@@ -3,6 +3,10 @@ name: Deploy staging
 on:
   push:
     branches: [staging]
+  # Re-deploying the current commit needs a trigger of its own. Re-running a
+  # previous run replays *that commit's* workflow file, so a fix to this file
+  # is not picked up by a rerun of the run it was meant to fix.
+  workflow_dispatch:
 
 # Serialise deploys. Two overlapping runs would also run migrations
 # concurrently against the same Neon branch.
@@ -57,6 +61,24 @@ jobs:
         run: |
           pip install -e "."
           python scripts/migrate.py
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DIRECT_URL_STAGING }}
+
+      - name: Re-judge stored jobs against the shipped filter rules
+        # See the note in deploy-production.yml. Staging runs it too so the
+        # row counts can be read before the same thing happens to production.
+        run: |
+          # Outside the checkout: `vercel build` runs next and sweeps the
+          # working directory into the function bundle. A log file written
+          # here would ship to production.
+          log="$RUNNER_TEMP/reclassify.log"
+          python scripts/reclassify.py | tee "$log"
+          {
+            echo '### Re-judged stored jobs'
+            echo '```'
+            cat "$log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
         env:
           DATABASE_URL: ${{ secrets.NEON_DIRECT_URL_STAGING }}
 
