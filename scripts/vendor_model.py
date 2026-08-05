@@ -1,8 +1,14 @@
 """Download the embedding model into the build.
 
 Runs as Vercel's build command. The alternative -- letting fastembed fetch the
-model at runtime -- would download 65 MB into an ephemeral /tmp on every cold
-start, which is both slow and repeated.
+model at runtime -- would download the weights into an ephemeral /tmp on every
+cold start, which is both slow and repeated.
+
+Size, measured rather than assumed. The cache is 64 MB of unique data locally
+and 134 MB on the CI builder: HuggingFace stores each file once under blobs/
+and links it from snapshots/, and on a filesystem where it cannot symlink it
+writes a second full copy instead. Both numbers matter -- the bundle limit is
+enforced against the builder's figure, not this machine's.
 
 Idempotent: fastembed skips the download when the cache already holds the model,
 so this is cheap on a warm local run and does the real work on a clean builder.
